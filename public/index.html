@@ -3,15 +3,94 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>NoMetro • Metro de Lisboa em Tempo Real</title>
-  <meta name="description" content="Consulte os tempos de espera do Metro de Lisboa em tempo real com indicador visual de aproximação dos comboios.">
+  <title>NoMetro • Horário e Próximo Metro de Lisboa em Tempo Real</title>
+  <meta name="description" content="Consulte o horário e tempos de espera do Metro de Lisboa em tempo real. Saiba exatamente quando chega o próximo metro na sua estação com estimativa instantânea e GPS.">
+  <meta name="keywords" content="horario metro lisboa, horarios metro lisboa, proximo metro lisboa, tempo de espera metro lisboa, metro de lisboa tempo real, a que horas passa o metro lisboa, linhas metro lisboa, linha azul, linha amarela, linha verde, linha vermelha, frequencia metro lisboa, nometro lisboa, metro lisboa app">
+  <meta name="author" content="NoMetro">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://nometro.pt/">
+
+  <!-- Open Graph / Facebook / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nometro.pt/">
+  <meta property="og:title" content="NoMetro • Horário e Próximo Metro de Lisboa em Tempo Real">
+  <meta property="og:description" content="Consulte o horário e tempos de espera do Metro de Lisboa em tempo real. Saiba exatamente quando chega o próximo metro na sua estação.">
+  <meta property="og:site_name" content="NoMetro">
+  <meta property="og:locale" content="pt_PT">
+  <meta property="og:image" content="https://nometro.pt/icon.svg">
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://nometro.pt/">
+  <meta name="twitter:title" content="NoMetro • Horário e Próximo Metro de Lisboa em Tempo Real">
+  <meta name="twitter:description" content="Consulte o horário e tempos de espera do Metro de Lisboa em tempo real. Saiba quando chega o próximo comboio na sua estação.">
+  <meta name="twitter:image" content="https://nometro.pt/icon.svg">
+
+  <!-- Apple & PWA Meta -->
   <meta name="theme-color" content="#0b0f19">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="NoMetro">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="apple-touch-icon" sizes="180x180" href="/icon.svg">
+
+  <!-- Google Structured Data (JSON-LD) para SEO e Recomendações -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebApplication",
+        "@id": "https://nometro.pt/#webapp",
+        "name": "NoMetro • Metro de Lisboa em Tempo Real",
+        "alternateName": "NoMetro",
+        "url": "https://nometro.pt/",
+        "applicationCategory": "TransitApplication",
+        "operatingSystem": "All",
+        "inLanguage": "pt-PT",
+        "description": "Aplicação web e PWA para consulta instantânea de horários, tempos de espera e chegada do próximo comboio do Metropolitano de Lisboa em tempo real.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://nometro.pt/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Como saber o horário do próximo metro em Lisboa em tempo real?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No NoMetro (nometro.pt) pode consultar os tempos de espera em tempo real e a que horas chega o próximo metro em qualquer estação de Lisboa (Linhas Azul, Amarela, Verde e Vermelha), com suporte a localização por GPS e previsão contínua mesmo sem sinal nos túneis."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Qual é o horário de funcionamento do Metro de Lisboa?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "O Metropolitano de Lisboa opera todos os dias das 06:30 da manhã até à 01:00 da madrugada. Durante a madrugada, o NoMetro exibe a contagem decrescente precisa até à reabertura do serviço."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Quais são as linhas de metro disponíveis no NoMetro?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "O NoMetro apresenta os tempos de todas as 4 linhas do Metro de Lisboa: Linha Azul (Santa Apolónia - Reboleira), Linha Amarela (Rato - Odivelas), Linha Verde (Cais do Sodré - Telheiras) e Linha Vermelha (São Sebastião - Aeroporto)."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
