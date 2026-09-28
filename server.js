@@ -207,18 +207,68 @@ app.get('/api/estacoes', async (req, res) => {
   res.status(500).json({ success: false, error: 'Could not load stations' });
 });
 
-// 3. Real-time wait times endpoint (/api/tempo-espera)
-app.get('/api/tempo-espera', async (req, res) => {
-  const now = Date.now();
-  if (cache.waitTimes.data && (now - cache.waitTimes.timestamp < cache.waitTimes.ttl)) {
-    return res.json({ ...cache.waitTimes.data, cached: true });
+// Helper: Calculate accurate Lisbon Metro service operating status & countdown
+function getLisbonServiceStatus() {
+  const lisbonStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Lisbon" });
+  const lisbonDate = new Date(lisbonStr);
+  const hours = lisbonDate.getHours();
+  const minutes = lisbonDate.getMinutes();
+  const seconds = lisbonDate.getSeconds();
+
+  // Official Metro de Lisboa operating hours: 06:30 - 01:00
+  // Night closure: between 01:00:00 and 06:29:59
+  const isClosed = (hours >= 1 && hours < 6) || (hours === 6 && minutes < 30);
+
+  // Target reopening is 06:30:00 Lisbon time
+  const targetReopen = new Date(lisbonDate);
+  targetReopen.setHours(6, 30, 0, 0);
+  if (hours > 6 || (hours === 6 && minutes >= 30)) {
+    // If called during daylight hours, next reopening is tomorrow morning
+    targetReopen.setDate(targetReopen.getDate() + 1);
   }
 
-  // Check current Lisbon hour (Metro operates 06:30 to 01:00)
-  const lisbonTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Lisbon" }));
-  const hours = lisbonTime.getHours();
-  const minutes = lisbonTime.getMinutes();
-  const isNightHours = (hours >= 1 && hours < 6) || (hours === 6 && minutes < 30);
+  const diffMs = Math.max(0, targetReopen - lisbonDate);
+  const remainingHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const remainingMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const remainingSeconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+  const formattedHoursMinutes = `${remainingHours}h ${remainingMinutes < 10 ? '0' : ''}${remainingMinutes}m`;
+  const formattedColon = `${String(remainingHours).padStart(2, '0')}:${String(remainingMinutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+
+  return {
+    isClosed,
+    currentLisbonTime: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`,
+    hours,
+    minutes,
+    seconds,
+    diffMs,
+    remainingHours,
+    remainingMinutes,
+    remainingSeconds,
+    formattedHoursMinutes,
+    formattedColon,
+    reopenTime: '06:30',
+    scheduleInfo: '06:30 — 01:00'
+  };
+}
+
+// 3. Real-time wait times endpoint (/api/tempo-espera)
+app.get('/api/tempo-espera', async (req, res) => {
+  const serviceStatus = getLisbonServiceStatus();
+  const now = Date.now();
+
+  if (serviceStatus.isClosed) {
+    return res.json({
+      success: true,
+      serviceStatus,
+      trains: [],
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  if (cache.waitTimes.data && (now - cache.waitTimes.timestamp < cache.waitTimes.ttl)) {
+    return res.json({ ...cache.waitTimes.data, serviceStatus, cached: true });
+  }
 
   try {
     const apiRes = await fetchMetroApi('/tempoEspera/Estacao/todos');
@@ -226,11 +276,9 @@ app.get('/api/tempo-espera', async (req, res) => {
 
     const data = {
       success: true,
-      isNightHours,
-      operatingStatus: isNightHours ? 'Serviço encerrado (01:00 - 06:30)' : 'Em circulação',
-      nextOpeningTime: '06:30',
+      serviceStatus,
       trains: liveData,
-      timestamp: lisbonTime.toISOString()
+      timestamp: new Date().toISOString()
     };
 
     cache.waitTimes = { data, timestamp: now, ttl: 10000 };
@@ -239,10 +287,10 @@ app.get('/api/tempo-espera', async (req, res) => {
     console.error('Error fetching wait times:', err.message);
     return res.json({
       success: true,
-      isNightHours,
-      operatingStatus: isNightHours ? 'Serviço encerrado (01:00 - 06:30)' : 'Instabilidade temporária na telemetria',
+      serviceStatus,
       trains: [],
-      timestamp: lisbonTime.toISOString()
+      error: 'Instabilidade temporária na telemetria',
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -250,15 +298,29 @@ app.get('/api/tempo-espera', async (req, res) => {
 // 4. Station specific wait times (/api/tempo-espera/:id)
 app.get('/api/tempo-espera/:id', async (req, res) => {
   const stationId = req.params.id.toUpperCase();
+  const serviceStatus = getLisbonServiceStatus();
+
+  if (serviceStatus.isClosed) {
+    return res.json({
+      success: true,
+      stationId,
+      serviceStatus,
+      trains: [],
+      timestamp: new Date().toISOString()
+    });
+  }
+
   try {
     const apiRes = await fetchMetroApi(`/tempoEspera/Estacao/${stationId}`);
     return res.json({
       success: true,
       stationId,
-      trains: (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : []
+      serviceStatus,
+      trains: (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [],
+      timestamp: new Date().toISOString()
     });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message, serviceStatus });
   }
 });
 

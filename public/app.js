@@ -32,7 +32,14 @@ const I18N = {
     towardsPrefix: 'Para',
     openInMainView: 'Ver no Próximo Metro',
     interchanges: 'correspondências',
-    close: 'Fechar'
+    close: 'Fechar',
+    metroClosedTitle: 'Metro fora de funcionamento no momento',
+    metroReopensIn: 'Reabre em',
+    scheduledReopenPrefix: 'Reabertura programada para as',
+    operatingHoursLabel: 'Horário habitual de circulação',
+    operatingHoursValue: '06:30 — 01:00 (todos os dias)',
+    nightServiceClosed: 'Serviço Noturno Encerrado',
+    lineStatusClosed: 'Encerrada'
   },
   en: {
     searchPlaceholder: 'Search station...',
@@ -63,7 +70,14 @@ const I18N = {
     towardsPrefix: 'To',
     openInMainView: 'Open in Next Train',
     interchanges: 'transfers',
-    close: 'Close'
+    close: 'Close',
+    metroClosedTitle: 'Metro currently out of service',
+    metroReopensIn: 'Reopens in',
+    scheduledReopenPrefix: 'Scheduled reopening at',
+    operatingHoursLabel: 'Regular operating hours',
+    operatingHoursValue: '06:30 — 01:00 (daily)',
+    nightServiceClosed: 'Night Service Closed',
+    lineStatusClosed: 'Closed'
   }
 };
 
@@ -120,7 +134,10 @@ const STATE = {
   simulatedTrains: {},
   networkDirection: 'forward', // 'forward' or 'backward'
   networkSearchQuery: '',
-  activeSheetStationId: null
+  activeSheetStationId: null,
+  isServiceClosed: false,
+  secondsUntilReopen: 0,
+  serviceStatus: null
 };
 
 function t(key) {
@@ -260,6 +277,7 @@ async function init() {
     }
 
     await fetchNetworkStatus();
+    await fetchWaitTimes();
     updateActiveStationUI();
     renderSchematicTrack();
   } catch (err) {
@@ -269,7 +287,8 @@ async function init() {
   setInterval(tickTrains, 1000);
   setInterval(async () => {
     await fetchNetworkStatus();
-  }, 12000);
+    await fetchWaitTimes();
+  }, 15000);
 }
 
 // Fetch Lines Status
@@ -286,7 +305,7 @@ async function fetchNetworkStatus() {
 }
 
 // Active Station UI & Train Generation
-function updateActiveStationUI() {
+async function updateActiveStationUI() {
   const station = STATE.stationsMap[STATE.selectedStationId];
   if (!station) return;
 
@@ -308,33 +327,148 @@ function updateActiveStationUI() {
     dom.stationDistBadge.style.display = 'none';
   }
 
+  await fetchWaitTimes();
   initTrainCountdowns();
   renderTrainCards();
 }
 
-function initTrainCountdowns() {
+async function fetchWaitTimes() {
+  try {
+    const res = await fetch(`/api/tempo-espera/${STATE.selectedStationId}`).then(r => r.json());
+    if (res.success && res.serviceStatus) {
+      STATE.serviceStatus = res.serviceStatus;
+      STATE.isServiceClosed = res.serviceStatus.isClosed;
+      if (typeof res.serviceStatus.diffMs === 'number') {
+        STATE.secondsUntilReopen = Math.floor(res.serviceStatus.diffMs / 1000);
+      }
+
+      if (!STATE.isServiceClosed && Array.isArray(res.trains) && res.trains.length > 0) {
+        parseRealTrains(res.trains);
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching wait times:', err);
+  }
+}
+
+function parseRealTrains(trainList) {
   const station = STATE.stationsMap[STATE.selectedStationId];
   if (!station) return;
 
   station.lines.forEach(lineName => {
-    const key1 = `${STATE.selectedStationId}-${lineName}-dir1`;
-    const key2 = `${STATE.selectedStationId}-${lineName}-dir2`;
+    ['dir1', 'dir2'].forEach(dirKey => {
+      const key = `${STATE.selectedStationId}-${lineName}-${dirKey}`;
+      const terminals = STATE.lineTerminals[lineName] || {};
+      const targetTerminal = terminals[dirKey];
 
-    if (!STATE.simulatedTrains[key1]) {
-      STATE.simulatedTrains[key1] = {
-        secondsLeft: Math.floor(Math.random() * 120) + 30,
-        initialSeconds: 220,
-        subsequentMinutes: Math.floor(Math.random() * 3) + 4
-      };
-    }
-    if (!STATE.simulatedTrains[key2]) {
-      STATE.simulatedTrains[key2] = {
-        secondsLeft: Math.floor(Math.random() * 150) + 20,
-        initialSeconds: 240,
-        subsequentMinutes: Math.floor(Math.random() * 3) + 5
-      };
-    }
+      const match = trainList.find(t => {
+        const tLine = (t.linha || '').toLowerCase();
+        const curLine = lineName.toLowerCase();
+        const tDest = (t.destino || '').toLowerCase();
+        const destMatch = targetTerminal && tDest.includes(targetTerminal.toLowerCase());
+        return (tLine.includes(curLine) || tLine === '') && (destMatch || trainList.length === 1);
+      });
+
+      if (match && match.tempoChegada1) {
+        const sec1 = parseInt(match.tempoChegada1, 10);
+        const sec2 = match.tempoChegada2 ? parseInt(match.tempoChegada2, 10) : 0;
+        if (!isNaN(sec1) && sec1 >= 0) {
+          STATE.simulatedTrains[key] = {
+            secondsLeft: sec1,
+            initialSeconds: Math.max(sec1, 240),
+            subsequentMinutes: sec2 > 0 ? Math.round(sec2 / 60) : 5
+          };
+          return;
+        }
+      }
+
+      if (!STATE.simulatedTrains[key]) {
+        STATE.simulatedTrains[key] = {
+          secondsLeft: Math.floor(Math.random() * 120) + 60,
+          initialSeconds: 240,
+          subsequentMinutes: 5
+        };
+      }
+    });
   });
+}
+
+function renderServiceClosedCard() {
+  const station = STATE.stationsMap[STATE.selectedStationId];
+  const stationName = station ? station.name : '';
+  const secondsLeft = Math.max(0, STATE.secondsUntilReopen || 0);
+  const h = Math.floor(secondsLeft / 3600);
+  const m = Math.floor((secondsLeft % 3600) / 60);
+  const s = secondsLeft % 60;
+  
+  const timeFormatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+  const linesPills = (station ? station.lines : ['Azul', 'Amarela', 'Verde', 'Vermelha']).map(line => {
+    const col = STATE.colors[line] || '#0084c9';
+    return `
+      <div class="closed-line-chip" style="--chip-col: ${col}">
+        <span class="closed-chip-dot"></span>
+        <span class="closed-chip-name">${line}</span>
+        <span class="closed-chip-status">${t('lineStatusClosed')}</span>
+      </div>
+    `;
+  }).join('');
+
+  dom.trainDirectionsContainer.innerHTML = `
+    <div class="service-closed-card">
+      <div class="closed-card-badge">
+        <span class="closed-pulse-dot"></span>
+        <span>${t('nightServiceClosed')}</span>
+      </div>
+
+      <div class="closed-hero-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+          <path d="M19 3v4"></path>
+          <path d="M21 5h-4"></path>
+        </svg>
+      </div>
+
+      <h3 class="closed-card-title">${t('metroClosedTitle')}</h3>
+
+      <div class="closed-countdown-box">
+        <span class="closed-countdown-prefix">${t('metroReopensIn')}</span>
+        <div class="closed-countdown-value" id="closed-countdown-val">
+          <span class="digits">${timeFormatted}</span>
+          <span class="seconds-unit">${String(s).padStart(2, '0')}s</span>
+        </div>
+        <span class="closed-countdown-sub">${t('scheduledReopenPrefix')} <strong>06:30</strong></span>
+      </div>
+
+      <div class="closed-info-grid">
+        <div class="closed-info-item">
+          <span class="info-label">${t('operatingHoursLabel')}</span>
+          <span class="info-val">${t('operatingHoursValue')}</span>
+        </div>
+      </div>
+
+      <div class="closed-lines-section">
+        <div class="closed-lines-label">${stationName ? `${stationName} • Linhas` : 'Linhas do Metro'}</div>
+        <div class="closed-lines-chips">
+          ${linesPills}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateClosedCountdownDisplay() {
+  const container = document.getElementById('closed-countdown-val');
+  if (!container) return;
+  const secondsLeft = Math.max(0, STATE.secondsUntilReopen || 0);
+  const h = Math.floor(secondsLeft / 3600);
+  const m = Math.floor((secondsLeft % 3600) / 60);
+  const s = secondsLeft % 60;
+  const timeFormatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  container.innerHTML = `
+    <span class="digits">${timeFormatted}</span>
+    <span class="seconds-unit">${String(s).padStart(2, '0')}s</span>
+  `;
 }
 
 function renderTrainCards() {
@@ -342,6 +476,11 @@ function renderTrainCards() {
   if (!station) return;
 
   dom.trainDirectionsContainer.innerHTML = '';
+
+  if (STATE.isServiceClosed) {
+    renderServiceClosedCard();
+    return;
+  }
 
   station.lines.forEach(lineName => {
     const lineColor = STATE.colors[lineName] || '#0084c9';
@@ -442,6 +581,16 @@ function renderCard({ lineName, lineColor, dirKey, destination, targetName, prev
 }
 
 function tickTrains() {
+  if (STATE.isServiceClosed) {
+    if (STATE.secondsUntilReopen > 0) {
+      STATE.secondsUntilReopen -= 1;
+      updateClosedCountdownDisplay();
+    } else {
+      fetchWaitTimes();
+    }
+    return;
+  }
+
   const station = STATE.stationsMap[STATE.selectedStationId];
   if (!station) return;
 
@@ -830,6 +979,8 @@ function setupEventListeners() {
   dom.btnRefresh.addEventListener('click', async () => {
     dom.btnRefresh.classList.add('refreshing');
     await fetchNetworkStatus();
+    await fetchWaitTimes();
+    renderSchematicTrack();
     setTimeout(() => dom.btnRefresh.classList.remove('refreshing'), 600);
   });
 
