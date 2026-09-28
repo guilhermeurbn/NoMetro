@@ -2,6 +2,11 @@
 // NoMetro • Lisboa - Controller (Inline Rede Page & Tab Bar)
 // ========================================================
 
+// Garantir HTTPS para suporte a geolocalização e Service Worker em produção
+if (typeof location !== 'undefined' && location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  location.href = location.href.replace('http:', 'https:');
+}
+
 const I18N = {
   pt: {
     searchPlaceholder: 'Pesquisar estação...',
@@ -144,7 +149,14 @@ const STATE = {
   selectedTimelineLine: 'Azul',
   currentView: 'next-train',
   simulationMode: false,
-  currentTheme: localStorage.getItem('nometro_theme') || 'dark',
+  currentTheme: (function() {
+    const custom = localStorage.getItem('nometro_theme_custom');
+    if (custom) return custom;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light';
+    }
+    return 'dark';
+  })(),
   currentLang: localStorage.getItem('nometro_lang') || 'pt',
   userLocation: null,
   simulatedTrains: {},
@@ -226,17 +238,30 @@ const dom = {
   sheetSelectLabel: document.getElementById('sheet-select-label')
 };
 
-// Theme Switcher
-function applyTheme(theme) {
+// Theme Switcher (Detects white or black system theme automatically)
+function getSystemTheme() {
+  if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+    return 'light';
+  }
+  return 'dark';
+}
+
+function applyTheme(theme, isManual = false) {
   STATE.currentTheme = theme;
-  localStorage.setItem('nometro_theme', theme);
+  if (isManual) {
+    localStorage.setItem('nometro_theme_custom', theme);
+  }
+
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
 
   if (theme === 'light') {
     document.documentElement.setAttribute('data-theme', 'light');
+    if (metaTheme) metaTheme.setAttribute('content', '#f2f2f7');
     if (dom.themeIconMoon) dom.themeIconMoon.style.display = 'none';
     if (dom.themeIconSun) dom.themeIconSun.style.display = 'block';
   } else {
     document.documentElement.removeAttribute('data-theme');
+    if (metaTheme) metaTheme.setAttribute('content', '#000000');
     if (dom.themeIconMoon) dom.themeIconMoon.style.display = 'block';
     if (dom.themeIconSun) dom.themeIconSun.style.display = 'none';
   }
@@ -244,7 +269,27 @@ function applyTheme(theme) {
 
 function toggleTheme() {
   const nextTheme = STATE.currentTheme === 'light' ? 'dark' : 'light';
-  applyTheme(nextTheme);
+  applyTheme(nextTheme, true);
+}
+
+// Auto-detect and listen for system dark/light mode changes (e.g. automatic iOS/Android sunset theme)
+function setupSystemThemeListener() {
+  if (typeof window === 'undefined' || !window.matchMedia) return;
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+  
+  const handleSystemThemeChange = (e) => {
+    // Only adapt automatically if the user hasn't explicitly locked a custom preference via the toggle button
+    const hasCustomOverride = localStorage.getItem('nometro_theme_custom');
+    if (!hasCustomOverride) {
+      applyTheme(e.matches ? 'light' : 'dark', false);
+    }
+  };
+
+  if (mediaQuery.addEventListener) {
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+  } else if (mediaQuery.addListener) {
+    mediaQuery.addListener(handleSystemThemeChange);
+  }
 }
 
 // Language Switcher
@@ -348,7 +393,8 @@ function hideSplashScreen() {
 // Initialize
 async function init() {
   setupEventListeners();
-  applyTheme(STATE.currentTheme);
+  setupSystemThemeListener();
+  applyTheme(STATE.currentTheme, false);
   applyLanguage(STATE.currentLang);
   updateModeButtonUI();
 
@@ -1231,26 +1277,42 @@ function showRecentStationsDropdown() {
     .map(id => STATE.stationsMap[id])
     .filter(Boolean);
 
-  if (validStations.length === 0) {
-    dom.stationDropdown.style.display = 'none';
-    return;
-  }
+  let html = `
+    <div class="dropdown-item dropdown-gps-item" id="dropdown-gps-trigger" style="border-bottom: 1px solid var(--border); font-weight: 600; color: #0a84ff; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; pointer-events: none;">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+      </svg>
+      <span>Usar localização (estação mais próxima)</span>
+    </div>
+  `;
 
-  let html = `<div class="dropdown-header"><span>🕒</span> ${t('recentStations')}</div>`;
-  html += validStations.map(s => {
-    const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line]};"></span>`).join('');
-    return `
-      <div class="dropdown-item" data-id="${s.id}">
-        <span class="dropdown-station-name">${s.name}</span>
-        <div class="dropdown-line-dots">${dots}</div>
-      </div>
-    `;
-  }).join('');
+  if (validStations.length > 0) {
+    html += `<div class="dropdown-header"><span>🕒</span> ${t('recentStations')}</div>`;
+    html += validStations.map(s => {
+      const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line]};"></span>`).join('');
+      return `
+        <div class="dropdown-item" data-id="${s.id}">
+          <span class="dropdown-station-name">${s.name}</span>
+          <div class="dropdown-line-dots">${dots}</div>
+        </div>
+      `;
+    }).join('');
+  }
 
   dom.stationDropdown.innerHTML = html;
   dom.stationDropdown.style.display = 'block';
 
-  dom.stationDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+  const gpsTrigger = dom.stationDropdown.querySelector('#dropdown-gps-trigger');
+  if (gpsTrigger) {
+    gpsTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dom.stationDropdown.style.display = 'none';
+      dom.stationSearch.blur();
+      locateStation();
+    });
+  }
+
+  dom.stationDropdown.querySelectorAll('.dropdown-item[data-id]').forEach(item => {
     item.addEventListener('click', () => selectStation(item.dataset.id));
   });
 }
@@ -1292,77 +1354,152 @@ function handleSearch(e) {
   });
 }
 
-// Automatically request user location on startup to show nearest station
-function autoLocateOnStartup() {
-  if (!navigator.geolocation) return;
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      STATE.userLocation = { lat, lon };
-
-      if (!STATE.stations || STATE.stations.length === 0) return;
-
-      let nearest = null;
-      let minDistance = Infinity;
-
-      STATE.stations.forEach(station => {
-        const d = calculateDistance(lat, lon, station.lat, station.lon);
-        if (d < minDistance) {
-          minDistance = d;
-          nearest = station;
-        }
-      });
-
-      // If user is within Lisbon Metropolitan Area (< 40km from closest station)
-      if (nearest && minDistance < 40000) {
-        selectStation(nearest.id);
-      } else {
-        updateActiveStationUI();
-      }
-    },
-    (err) => {
-      console.log('GPS startup notice:', err.message);
-    },
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
-  );
+function showPermissionDeniedHelp() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    alert(
+      "Acesso à localização bloqueado no Safari / iPhone.\n\n" +
+      "Para encontrar a estação mais próxima:\n" +
+      "1. Abra as Definições do seu iPhone\n" +
+      "2. Vá a Safari > Localização (ou Privacidade e Segurança > Serviços de Localização)\n" +
+      "3. Escolha 'Perguntar' ou 'Permitir'\n" +
+      "4. Volte ao NoMetro e toque no botão azul de GPS."
+    );
+  } else {
+    alert(
+      "Acesso à localização bloqueado no navegador.\n\n" +
+      "Para encontrar a estação mais próxima, toque no ícone de opções/cadeado na barra de endereço do navegador e ative a permissão de 'Localização'."
+    );
+  }
 }
 
-// Locate Nearest Station (GPS)
-function locateStation() {
-  if (!navigator.geolocation) return;
+let isLocatingStation = false;
 
-  dom.btnGps.classList.add('locating');
+// Robust Geolocation Handler (High Accuracy with immediate Low Accuracy Fallback)
+function locateUserStation(interactive = false) {
+  if (isLocatingStation && interactive) return;
 
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      dom.btnGps.classList.remove('locating');
-      STATE.userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+  if (!navigator.geolocation) {
+    if (interactive) {
+      alert('O seu telemóvel ou navegador não suporta geolocalização.');
+    }
+    return;
+  }
 
-      let nearest = null;
-      let minDistance = Infinity;
+  if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    if (interactive) {
+      alert('A geolocalização requer ligação segura (HTTPS). A recarregar em HTTPS...');
+      location.href = location.href.replace('http:', 'https:');
+    }
+    return;
+  }
 
-      STATE.stations.forEach(station => {
-        const d = calculateDistance(STATE.userLocation.lat, STATE.userLocation.lon, station.lat, station.lon);
-        if (d < minDistance) {
-          minDistance = d;
-          nearest = station;
-        }
-      });
+  if (interactive && dom.btnGps) {
+    dom.btnGps.classList.add('locating');
+  }
 
-      if (nearest) {
+  isLocatingStation = true;
+  let finished = false;
+
+  const onCoordsSuccess = (pos) => {
+    if (finished) return;
+    finished = true;
+    isLocatingStation = false;
+    if (dom.btnGps) dom.btnGps.classList.remove('locating');
+
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    STATE.userLocation = { lat, lon };
+
+    if (!STATE.stations || STATE.stations.length === 0) return;
+
+    let nearest = null;
+    let minDistance = Infinity;
+
+    STATE.stations.forEach(station => {
+      const d = calculateDistance(lat, lon, station.lat, station.lon);
+      if (d < minDistance) {
+        minDistance = d;
+        nearest = station;
+      }
+    });
+
+    if (nearest) {
+      // If user tapped GPS button or is in Lisbon area (< 40km)
+      if (interactive || minDistance < 40000) {
         selectStation(nearest.id);
         if (STATE.currentView === 'network') {
           switchView('next-train');
         }
+      } else {
+        updateActiveStationUI();
       }
+    }
+  };
+
+  const tryLowAccuracyFallback = () => {
+    if (finished) return;
+    navigator.geolocation.getCurrentPosition(
+      onCoordsSuccess,
+      (err2) => {
+        if (finished) return;
+        finished = true;
+        isLocatingStation = false;
+        if (dom.btnGps) dom.btnGps.classList.remove('locating');
+        console.warn('Geolocation fallback error:', err2.code, err2.message);
+        if (interactive) {
+          if (err2.code === 1) { // PERMISSION_DENIED
+            showPermissionDeniedHelp();
+          } else {
+            alert('Não foi possível obter a sua localização no momento. Verifique se o GPS está ativo e tente novamente.');
+          }
+        }
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  };
+
+  // Attempt 1: High Accuracy (GPS hardware) with 5s timeout and 60s cache
+  navigator.geolocation.getCurrentPosition(
+    onCoordsSuccess,
+    (err) => {
+      console.warn('GPS high accuracy failed, trying cellular/wifi triangulation:', err.code, err.message);
+      if (err.code === 1) {
+        // User explicitly denied permission
+        if (finished) return;
+        finished = true;
+        isLocatingStation = false;
+        if (dom.btnGps) dom.btnGps.classList.remove('locating');
+        if (interactive) {
+          showPermissionDeniedHelp();
+        }
+        return;
+      }
+      // If timeout (code 3) or unavailable (code 2), immediately fallback to Wi-Fi/cellular
+      tryLowAccuracyFallback();
     },
-    () => { 
-      dom.btnGps.classList.remove('locating');
-    },
-    { enableHighAccuracy: true, timeout: 5000 }
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
   );
+}
+
+function autoLocateOnStartup() {
+  locateUserStation(false);
+
+  // iOS Safari User Gesture trigger: if startup prompt was suppressed because page loaded without user gesture,
+  // trigger on the very first touch/click anywhere on the screen!
+  const onFirstInteraction = () => {
+    window.removeEventListener('touchstart', onFirstInteraction);
+    window.removeEventListener('click', onFirstInteraction);
+    if (!STATE.userLocation) {
+      locateUserStation(false);
+    }
+  };
+  window.addEventListener('touchstart', onFirstInteraction, { passive: true, once: true });
+  window.addEventListener('click', onFirstInteraction, { once: true });
+}
+
+function locateStation() {
+  locateUserStation(true);
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {

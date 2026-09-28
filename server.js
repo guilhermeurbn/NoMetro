@@ -13,6 +13,16 @@ const METRO_BASE_PATH = '/estadoServicoML/1.0.1';
 
 app.use(cors());
 app.use(express.json());
+
+// Enforce HTTPS behind reverse proxies (Render, Cloudflare, etc.)
+app.use((req, res, next) => {
+  const proto = req.headers['x-forwarded-proto'];
+  if (proto && proto === 'http') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // In-memory cache store

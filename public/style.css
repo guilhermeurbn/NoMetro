@@ -88,6 +88,7 @@ body {
   height: 100vh;
   height: 100dvh;
   background: #000000;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,6 +99,11 @@ body {
   pointer-events: all;
   user-select: none;
   -webkit-user-select: none;
+}
+
+[data-theme="light"] .app-splash-screen {
+  background: #ffffff;
+  color: #000000;
 }
 
 .app-splash-screen.splash-hidden {
@@ -809,8 +815,8 @@ body.service-closed .active-station-hero {
   position: fixed;
   bottom: calc(76px + env(safe-area-inset-bottom, 16px));
   right: max(16px, calc((100vw - 440px) / 2 + 16px));
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: rgba(28, 28, 30, 0.85);
   backdrop-filter: blur(20px) saturate(180%);
@@ -822,6 +828,8 @@ body.service-closed .active-station-hero {
   justify-content: center;
   cursor: pointer;
   z-index: 9998;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   box-shadow: 
     0 6px 20px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -836,10 +844,11 @@ body.service-closed .active-station-hero {
 }
 
 .floating-gps-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   transform: rotate(-15deg);
   transition: transform 0.2s ease;
+  pointer-events: none;
 }
 
 .floating-gps-btn:active svg {

@@ -112,15 +112,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=2.2">
+  <script>
+    (function() {
+      try {
+        var customTheme = localStorage.getItem('nometro_theme_custom');
+        var systemIsLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        var theme = customTheme || (systemIsLight ? 'light' : 'dark');
+        if (theme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
-  <!-- App Splash / Loading Screen (Pure Black with NoMetro Logo) -->
+  <!-- App Splash / Loading Screen (Auto Adapts to Black or White System Theme) -->
   <div id="app-splash" class="app-splash-screen" aria-hidden="true">
     <div class="splash-content">
       <svg class="splash-logo" viewBox="0 0 148 44" fill="none" role="img" aria-label="NoMetro Logo">
         <!-- SÍMBOLO: Metro Puro em Traço Vetorial -->
-        <g transform="translate(-11.5, -7) scale(0.115)" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+        <g transform="translate(-11.5, -7) scale(0.115)" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
           <rect x="222" y="90" width="68" height="24" rx="12" fill="none"/>
           <rect x="142" y="118" width="228" height="216" rx="46" fill="none"/>
           <rect x="168" y="148" width="76" height="74" rx="14" fill="none"/>
@@ -138,7 +152,7 @@
         </g>
 
         <!-- TEXTO: NoMetro -->
-        <text x="42" y="28.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="800" letter-spacing="-0.9" fill="#ffffff">NoMetro</text>
+        <text x="42" y="28.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="800" letter-spacing="-0.9" fill="currentColor">NoMetro</text>
 
         <!-- CARRIS DAS 4 CORES DE LISBOA (Exatamente sob 'Metro') -->
         <g transform="translate(72, 34)">
@@ -383,6 +397,6 @@
     </footer>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=2.2"></script>
 </body>
 </html>
