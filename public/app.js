@@ -589,6 +589,30 @@ function setupSimulatedTrains() {
   });
 }
 
+// Official Metropolitano de Lisboa Destination Codes Mapping
+const METRO_DESTINATIONS = {
+  // Linha Azul
+  '33': { line: 'Azul', destination: 'Reboleira', dirKey: 'dir1' },
+  '42': { line: 'Azul', destination: 'Santa Apolónia', dirKey: 'dir2' },
+  '41': { line: 'Azul', destination: 'Pontinha', dirKey: 'dir1' },
+  '44': { line: 'Azul', destination: 'Amadora Este', dirKey: 'dir1' },
+
+  // Linha Amarela
+  '43': { line: 'Amarela', destination: 'Odivelas', dirKey: 'dir1' },
+  '48': { line: 'Amarela', destination: 'Rato', dirKey: 'dir2' },
+  '49': { line: 'Amarela', destination: 'Campo Grande', dirKey: 'dir1' },
+
+  // Linha Verde
+  '50': { line: 'Verde', destination: 'Telheiras', dirKey: 'dir1' },
+  '54': { line: 'Verde', destination: 'Cais do Sodré', dirKey: 'dir2' },
+
+  // Linha Vermelha
+  '38': { line: 'Vermelha', destination: 'São Sebastião', dirKey: 'dir1' },
+  '60': { line: 'Vermelha', destination: 'Aeroporto', dirKey: 'dir2' },
+  '40': { line: 'Vermelha', destination: 'Oriente', dirKey: 'dir2' },
+  '39': { line: 'Vermelha', destination: 'Alameda', dirKey: 'dir1' }
+};
+
 function parseRealTrains(trainList) {
   const station = STATE.stationsMap[STATE.selectedStationId];
   if (!station) return;
@@ -597,25 +621,39 @@ function parseRealTrains(trainList) {
     ['dir1', 'dir2'].forEach(dirKey => {
       const key = `${STATE.selectedStationId}-${lineName}-${dirKey}`;
       const terminals = STATE.lineTerminals[lineName] || {};
-      const targetTerminal = terminals[dirKey];
+      const targetTerminal = (terminals[dirKey] || '').toLowerCase().trim();
 
+      // Find matching train in live telemetry for this specific line and direction
       const match = trainList.find(t => {
-        const tLine = (t.linha || '').toLowerCase();
-        const curLine = lineName.toLowerCase();
-        const tDest = (t.destino || '').toLowerCase();
-        const destMatch = targetTerminal && tDest.includes(targetTerminal.toLowerCase());
-        return (tLine.includes(curLine) || tLine === '') && (destMatch || trainList.length === 1);
+        if (t.dirKey && t.lineName) {
+          return t.dirKey === dirKey && t.lineName === lineName;
+        }
+        const destInfo = METRO_DESTINATIONS[String(t.destino)];
+        if (destInfo) {
+          return destInfo.line === lineName && destInfo.dirKey === dirKey;
+        }
+        const tDest = (t.destinationName || t.destino || '').toLowerCase().trim();
+        return tDest === targetTerminal || tDest.includes(targetTerminal);
       });
 
-      if (match && match.tempoChegada1) {
-        const sec1 = parseInt(match.tempoChegada1, 10);
-        const sec2 = match.tempoChegada2 ? parseInt(match.tempoChegada2, 10) : 0;
+      if (match) {
+        const raw1 = match.seconds1 !== undefined && match.seconds1 !== null ? match.seconds1 : match.tempoChegada1;
+        const sec1 = (raw1 !== '--' && raw1 !== null && raw1 !== undefined) ? parseInt(raw1, 10) : NaN;
+        
+        const raw2 = match.seconds2 !== undefined && match.seconds2 !== null ? match.seconds2 : match.tempoChegada2;
+        const sec2 = (raw2 !== '--' && raw2 !== null && raw2 !== undefined) ? parseInt(raw2, 10) : NaN;
+
         if (!isNaN(sec1) && sec1 >= 0) {
+          const prev = STATE.simulatedTrains[key];
+          const initialSec = (prev && prev.initialSeconds && prev.initialSeconds > sec1)
+            ? prev.initialSeconds
+            : Math.max(sec1, 240);
+
           STATE.simulatedTrains[key] = {
             secondsLeft: sec1,
             targetArrivalTime: Date.now() + (sec1 * 1000),
-            initialSeconds: Math.max(sec1, 240),
-            subsequentMinutes: sec2 > 0 ? Math.round(sec2 / 60) : 5,
+            initialSeconds: initialSec,
+            subsequentMinutes: (!isNaN(sec2) && sec2 > 0) ? Math.round(sec2 / 60) : 5,
             isAffected: false
           };
           STATE.lastSuccessfulSync = Date.now();
@@ -623,11 +661,11 @@ function parseRealTrains(trainList) {
         }
       }
 
+      // If no live telemetry exists for this direction yet:
       if (!STATE.simulatedTrains[key]) {
-        const dSec = Math.floor(Math.random() * 120) + 60;
         STATE.simulatedTrains[key] = {
-          secondsLeft: dSec,
-          targetArrivalTime: Date.now() + (dSec * 1000),
+          secondsLeft: 180,
+          targetArrivalTime: Date.now() + 180000,
           initialSeconds: 240,
           subsequentMinutes: 5,
           isAffected: false
@@ -849,15 +887,10 @@ function tickTrains() {
       const train = STATE.simulatedTrains[key];
       if (!train) return;
 
-      if (train.targetArrivalTime && STATE.isWaitingForNetwork) {
+      if (train.targetArrivalTime) {
         train.secondsLeft = Math.max(0, Math.floor((train.targetArrivalTime - Date.now()) / 1000));
       } else if (train.secondsLeft > 0) {
         train.secondsLeft -= 1;
-      } else {
-        train.secondsLeft = Math.floor(Math.random() * 90) + 180;
-        train.targetArrivalTime = Date.now() + (train.secondsLeft * 1000);
-        train.initialSeconds = train.secondsLeft;
-        train.subsequentMinutes = Math.floor(Math.random() * 3) + 4;
       }
 
       const valEl = document.getElementById(`val-${key}`);
@@ -1083,35 +1116,60 @@ function openStationSheet(stationId) {
   station.lines.forEach(line => {
     const terminals = STATE.lineTerminals[line] || { dir1: 'Sentido 1', dir2: 'Sentido 2' };
     
-    // Generate realistic or simulated countdown for both directions
-    let sec1 = 120 + ((station.name.charCodeAt(0) * 17) % 240);
-    let sec2 = 60 + ((station.name.charCodeAt(1 || 0) * 23) % 320);
-
-    const m1 = Math.floor(sec1 / 60);
-    const s1 = sec1 % 60;
-    const m2 = Math.floor(sec2 / 60);
-    const s2 = sec2 % 60;
-
     trainRowsHtml += `
-      <div class="sheet-train-row">
+      <div class="sheet-train-row" id="sheet-row-${stationId}-${line}-dir1">
         <div class="sheet-train-dir">
           <span class="sheet-dir-name">${t('towards')} ${terminals.dir1}</span>
           <span class="sheet-dir-line">${t('line')} ${line}</span>
         </div>
-        <span class="sheet-train-time">${m1 > 0 ? `${m1}m ${s1 < 10 ? '0' : ''}${s1}s` : `${s1}s`}</span>
+        <span class="sheet-train-time" id="sheet-time-${stationId}-${line}-dir1">A carregar...</span>
       </div>
-      <div class="sheet-train-row">
+      <div class="sheet-train-row" id="sheet-row-${stationId}-${line}-dir2">
         <div class="sheet-train-dir">
           <span class="sheet-dir-name">${t('towards')} ${terminals.dir2}</span>
           <span class="sheet-dir-line">${t('line')} ${line}</span>
         </div>
-        <span class="sheet-train-time">${m2 > 0 ? `${m2}m ${s2 < 10 ? '0' : ''}${s2}s` : `${s2}s`}</span>
+        <span class="sheet-train-time" id="sheet-time-${stationId}-${line}-dir2">A carregar...</span>
       </div>
     `;
   });
 
   dom.sheetLiveTrains.innerHTML = trainRowsHtml;
   dom.stationDetailSheet.style.display = 'flex';
+
+  // Fetch real telemetry for this sheet station
+  fetch(`/api/tempo-espera/${stationId}`)
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.success || !Array.isArray(data.trains)) return;
+      if (STATE.activeSheetStationId !== stationId) return;
+
+      station.lines.forEach(line => {
+        ['dir1', 'dir2'].forEach(dirKey => {
+          const match = data.trains.find(t => {
+            if (t.dirKey && t.lineName) return t.dirKey === dirKey && t.lineName === line;
+            const destInfo = METRO_DESTINATIONS[String(t.destino)];
+            return destInfo && destInfo.line === line && destInfo.dirKey === dirKey;
+          });
+
+          const timeEl = document.getElementById(`sheet-time-${stationId}-${line}-${dirKey}`);
+          if (!timeEl) return;
+
+          if (match) {
+            const raw = match.seconds1 !== undefined && match.seconds1 !== null ? match.seconds1 : match.tempoChegada1;
+            const sec = (raw !== '--' && raw !== null && raw !== undefined) ? parseInt(raw, 10) : NaN;
+            if (!isNaN(sec) && sec >= 0) {
+              const m = Math.floor(sec / 60);
+              const s = sec % 60;
+              timeEl.textContent = sec <= 12 ? t('arriving') : (m > 0 ? `${m}m ${s < 10 ? '0' : ''}${s}s` : `${s}s`);
+              return;
+            }
+          }
+          timeEl.textContent = 'Sem dados';
+        });
+      });
+    })
+    .catch(() => {});
 }
 
 function closeStationSheet() {

@@ -54,6 +54,56 @@ const LINE_TERMINALS = {
   Vermelha: { dir1: 'São Sebastião', dir2: 'Aeroporto' }
 };
 
+// Official Metropolitano de Lisboa Destination Codes Mapping
+const METRO_DESTINATIONS = {
+  // Linha Azul
+  '33': { line: 'Azul', destination: 'Reboleira', dirKey: 'dir1' },
+  '42': { line: 'Azul', destination: 'Santa Apolónia', dirKey: 'dir2' },
+  '41': { line: 'Azul', destination: 'Pontinha', dirKey: 'dir1' },
+  '44': { line: 'Azul', destination: 'Amadora Este', dirKey: 'dir1' },
+
+  // Linha Amarela
+  '43': { line: 'Amarela', destination: 'Odivelas', dirKey: 'dir1' },
+  '48': { line: 'Amarela', destination: 'Rato', dirKey: 'dir2' },
+  '49': { line: 'Amarela', destination: 'Campo Grande', dirKey: 'dir1' },
+
+  // Linha Verde
+  '50': { line: 'Verde', destination: 'Telheiras', dirKey: 'dir1' },
+  '54': { line: 'Verde', destination: 'Cais do Sodré', dirKey: 'dir2' },
+
+  // Linha Vermelha
+  '38': { line: 'Vermelha', destination: 'São Sebastião', dirKey: 'dir1' },
+  '60': { line: 'Vermelha', destination: 'Aeroporto', dirKey: 'dir2' },
+  '40': { line: 'Vermelha', destination: 'Oriente', dirKey: 'dir2' },
+  '39': { line: 'Vermelha', destination: 'Alameda', dirKey: 'dir1' }
+};
+
+function enrichTrainData(rawTrains) {
+  if (!Array.isArray(rawTrains)) return [];
+  return rawTrains.map(t => {
+    const destInfo = METRO_DESTINATIONS[String(t.destino)] || null;
+    const sec1 = (t.tempoChegada1 !== '--' && t.tempoChegada1 !== null && t.tempoChegada1 !== undefined) 
+      ? parseInt(t.tempoChegada1, 10) 
+      : null;
+    const sec2 = (t.tempoChegada2 !== '--' && t.tempoChegada2 !== null && t.tempoChegada2 !== undefined) 
+      ? parseInt(t.tempoChegada2, 10) 
+      : null;
+    const sec3 = (t.tempoChegada3 !== '--' && t.tempoChegada3 !== null && t.tempoChegada3 !== undefined) 
+      ? parseInt(t.tempoChegada3, 10) 
+      : null;
+
+    return {
+      ...t,
+      lineName: destInfo ? destInfo.line : null,
+      destinationName: destInfo ? destInfo.destination : null,
+      dirKey: destInfo ? destInfo.dirKey : null,
+      seconds1: !isNaN(sec1) ? sec1 : null,
+      seconds2: !isNaN(sec2) ? sec2 : null,
+      seconds3: !isNaN(sec3) ? sec3 : null
+    };
+  });
+}
+
 // Helper for Metro API HTTPS request
 function fetchMetroApi(endpoint) {
   return new Promise((resolve, reject) => {
@@ -272,7 +322,8 @@ app.get('/api/tempo-espera', async (req, res) => {
 
   try {
     const apiRes = await fetchMetroApi('/tempoEspera/Estacao/todos');
-    const liveData = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
+    const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
+    const liveData = enrichTrainData(rawList);
 
     const data = {
       success: true,
@@ -310,13 +361,32 @@ app.get('/api/tempo-espera/:id', async (req, res) => {
     });
   }
 
+  // Fast response from global cache if recent
+  const now = Date.now();
+  if (cache.waitTimes.data && (now - cache.waitTimes.timestamp < cache.waitTimes.ttl)) {
+    const cachedStationTrains = cache.waitTimes.data.trains.filter(t => t.stop_id === stationId);
+    if (cachedStationTrains.length > 0) {
+      return res.json({
+        success: true,
+        stationId,
+        serviceStatus,
+        trains: cachedStationTrains,
+        timestamp: cache.waitTimes.data.timestamp,
+        cached: true
+      });
+    }
+  }
+
   try {
     const apiRes = await fetchMetroApi(`/tempoEspera/Estacao/${stationId}`);
+    const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
+    const trains = enrichTrainData(rawList);
+
     return res.json({
       success: true,
       stationId,
       serviceStatus,
-      trains: (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [],
+      trains,
       timestamp: new Date().toISOString()
     });
   } catch (err) {
