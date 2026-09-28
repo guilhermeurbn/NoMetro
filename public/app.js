@@ -4,7 +4,7 @@
 
 const I18N = {
   pt: {
-    searchPlaceholder: 'Buscar estação...',
+    searchPlaceholder: 'Pesquisar estação...',
     gpsTitle: 'Estação mais próxima',
     themeTitle: 'Tema Claro / Escuro',
     langToggle: 'EN',
@@ -16,7 +16,7 @@ const I18N = {
     stop1: '1 paragem',
     stops: 'paragens',
     next: 'Seguinte:',
-    minutes: 'minutos',
+    minutes: 'min',
     prevStationDefault: 'Estação Anterior',
     tabMetro: 'Metro',
     tabNetwork: 'Rede',
@@ -33,13 +33,20 @@ const I18N = {
     openInMainView: 'Ver no Próximo Metro',
     interchanges: 'correspondências',
     close: 'Fechar',
-    metroClosedTitle: 'Metro fora de funcionamento no momento',
+    metroClosedTitle: 'Serviço encerrado neste momento',
     metroReopensIn: 'Reabre em',
-    scheduledReopenPrefix: 'Reabertura programada para as',
+    scheduledReopenPrefix: 'Reabertura prevista às',
     operatingHoursLabel: 'Horário habitual de circulação',
     operatingHoursValue: '06:30 — 01:00 (todos os dias)',
     nightServiceClosed: 'Serviço Noturno Encerrado',
-    lineStatusClosed: 'Encerrada'
+    lineStatusClosed: 'Encerrada',
+    serviceAffected: 'Serviço afetado',
+    delayedStatusText: 'Perturbação • Circulação irregular',
+    modeReal: 'Real',
+    modeSim: 'Sim',
+    modeDelayed: 'Atraso',
+    allLines: 'Todas',
+    waitingNetwork: 'A aguardar rede • Estimativa baseada no último sinal'
   },
   en: {
     searchPlaceholder: 'Search station...',
@@ -54,7 +61,7 @@ const I18N = {
     stop1: '1 stop',
     stops: 'stops',
     next: 'Next:',
-    minutes: 'minutes',
+    minutes: 'min',
     prevStationDefault: 'Previous Station',
     tabMetro: 'Metro',
     tabNetwork: 'Network',
@@ -77,7 +84,14 @@ const I18N = {
     operatingHoursLabel: 'Regular operating hours',
     operatingHoursValue: '06:30 — 01:00 (daily)',
     nightServiceClosed: 'Night Service Closed',
-    lineStatusClosed: 'Closed'
+    lineStatusClosed: 'Closed',
+    serviceAffected: 'Service affected',
+    delayedStatusText: 'Delayed • Irregular service',
+    modeReal: 'Real',
+    modeSim: 'Sim',
+    modeDelayed: 'Delay',
+    allLines: 'All',
+    waitingNetwork: 'Waiting for network • Estimated from last signal'
   }
 };
 
@@ -127,7 +141,7 @@ const STATE = {
   selectedStationId: 'MP', // Default: Marquês de Pombal
   selectedTimelineLine: 'Azul',
   currentView: 'next-train',
-  simulationMode: true,
+  simulationMode: false,
   currentTheme: localStorage.getItem('nometro_theme') || 'dark',
   currentLang: localStorage.getItem('nometro_lang') || 'pt',
   userLocation: null,
@@ -137,8 +151,24 @@ const STATE = {
   activeSheetStationId: null,
   isServiceClosed: false,
   secondsUntilReopen: 0,
-  serviceStatus: null
+  serviceStatus: null,
+  appMode: 'normal', // Sempre dados reais da API oficial em produção
+  selectedStationLineFilter: 'ALL',
+  isWaitingForNetwork: false,
+  lastSuccessfulSync: null
 };
+
+// Limpa qualquer modo de simulação antigo retido no localStorage do navegador
+try { localStorage.removeItem('nometro_app_mode'); } catch (e) {}
+
+// Suporte a parâmetro de URL apenas para testes locais de desenvolvimento: ?mode=sim
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('mode')) {
+  const m = urlParams.get('mode').toLowerCase();
+  if (['normal', 'real'].includes(m)) STATE.appMode = 'normal';
+  else if (['sim', 'simulation'].includes(m)) STATE.appMode = 'simulation';
+  else if (['delayed', 'atraso', 'afetado'].includes(m)) STATE.appMode = 'delayed';
+}
 
 function t(key) {
   return I18N[STATE.currentLang][key] || key;
@@ -148,9 +178,13 @@ function t(key) {
 const dom = {
   viewNextTrain: document.getElementById('view-next-train'),
   viewNetwork: document.getElementById('view-network'),
+  activeStationHero: document.getElementById('active-station-hero'),
   activeStationName: document.getElementById('active-station-name'),
   activeStationBadges: document.getElementById('active-station-badges'),
   stationDistBadge: document.getElementById('station-dist-badge'),
+  stationLineFilter: document.getElementById('station-line-filter'),
+  networkWaitingPill: document.getElementById('network-waiting-pill'),
+  waitingNetworkText: document.getElementById('waiting-network-text'),
   stationSearch: document.getElementById('station-search'),
   stationDropdown: document.getElementById('station-dropdown'),
   btnClearSearch: document.getElementById('btn-clear-search'),
@@ -161,6 +195,8 @@ const dom = {
   themeIconSun: document.querySelector('.theme-icon.sun'),
   btnLang: document.getElementById('btn-lang'),
   langLabel: document.getElementById('lang-label'),
+  btnModeToggle: document.getElementById('btn-mode-toggle'),
+  modeLabel: document.getElementById('mode-label'),
   trainDirectionsContainer: document.getElementById('train-directions-container'),
   navBtns: document.querySelectorAll('.nav-btn'),
   networkLineTabs: document.querySelectorAll('.line-tab-btn'),
@@ -174,8 +210,6 @@ const dom = {
   networkGlobalStatus: document.getElementById('network-global-status'),
   networkGlobalStatusText: document.getElementById('network-global-status-text'),
   chipStops: document.getElementById('chip-stops'),
-  chipFrequency: document.getElementById('chip-frequency'),
-  chipInterchange: document.getElementById('chip-interchange'),
   dirBtnForward: document.getElementById('dir-btn-forward'),
   dirBtnBackward: document.getElementById('dir-btn-backward'),
   dirLabelForward: document.getElementById('dir-label-forward'),
@@ -213,10 +247,11 @@ function toggleTheme() {
 
 // Language Switcher
 function applyLanguage(lang) {
-  STATE.currentLang = lang;
-  localStorage.setItem('nometro_lang', lang);
+  const safeLang = (I18N && I18N[lang]) ? lang : 'pt';
+  STATE.currentLang = safeLang;
+  localStorage.setItem('nometro_lang', safeLang);
 
-  if (dom.langLabel) dom.langLabel.textContent = I18N[lang].langToggle;
+  if (dom.langLabel) dom.langLabel.textContent = I18N[safeLang].langToggle;
   if (dom.stationSearch) dom.stationSearch.placeholder = t('searchPlaceholder');
 
   // Nav buttons
@@ -231,6 +266,7 @@ function applyLanguage(lang) {
   if (dom.networkViewSubtitle) dom.networkViewSubtitle.textContent = t('networkSubtitle');
   if (dom.sheetSelectLabel) dom.sheetSelectLabel.textContent = t('openInMainView');
 
+  updateModeButtonUI();
   updateActiveStationUI();
   renderSchematicTrack();
 }
@@ -239,6 +275,46 @@ function toggleLanguage() {
   const nextLang = STATE.currentLang === 'pt' ? 'en' : 'pt';
   applyLanguage(nextLang);
 }
+
+// Mode Switcher (Tempo Real / Simulação / Atraso)
+function updateModeButtonUI() {
+  if (!dom.btnModeToggle || !dom.modeLabel) return;
+  dom.btnModeToggle.classList.remove('mode-simulation', 'mode-delayed');
+  if (STATE.appMode === 'normal') {
+    dom.modeLabel.textContent = t('modeReal');
+    dom.btnModeToggle.title = 'Modo: Tempo Real (API). Clique para alternar.';
+  } else if (STATE.appMode === 'simulation') {
+    dom.btnModeToggle.classList.add('mode-simulation');
+    dom.modeLabel.textContent = t('modeSim');
+    dom.btnModeToggle.title = 'Modo: Simulação Normal. Clique para alternar.';
+  } else if (STATE.appMode === 'delayed') {
+    dom.btnModeToggle.classList.add('mode-delayed');
+    dom.modeLabel.textContent = t('modeDelayed');
+    dom.btnModeToggle.title = 'Modo: Simulação com Atraso / Serviço Afetado. Clique para alternar.';
+  }
+}
+
+function cycleMode() {
+  if (STATE.appMode === 'normal') {
+    setMode('simulation');
+  } else if (STATE.appMode === 'simulation') {
+    setMode('delayed');
+  } else {
+    setMode('normal');
+  }
+}
+
+function setMode(mode) {
+  if (['normal', 'simulation', 'delayed'].includes(mode)) {
+    STATE.appMode = mode;
+    localStorage.setItem('nometro_app_mode', mode);
+    updateModeButtonUI();
+    updateActiveStationUI();
+    renderSchematicTrack();
+  }
+}
+
+window.setMode = setMode;
 
 // View Switcher (Metro vs Rede)
 function switchView(viewName) {
@@ -262,6 +338,7 @@ async function init() {
   setupEventListeners();
   applyTheme(STATE.currentTheme);
   applyLanguage(STATE.currentLang);
+  updateModeButtonUI();
 
   try {
     const stationsRes = await fetch('/api/estacoes').then(r => r.json());
@@ -277,8 +354,7 @@ async function init() {
     }
 
     await fetchNetworkStatus();
-    await fetchWaitTimes();
-    updateActiveStationUI();
+    await updateActiveStationUI();
     renderSchematicTrack();
   } catch (err) {
     console.error('Init error:', err);
@@ -288,6 +364,9 @@ async function init() {
   setInterval(async () => {
     await fetchNetworkStatus();
     await fetchWaitTimes();
+    if (STATE.isServiceClosed) {
+      renderServiceClosedCard();
+    }
   }, 15000);
 }
 
@@ -298,10 +377,82 @@ async function fetchNetworkStatus() {
     if (res.success && res.lines) {
       STATE.lineStatuses = res.lines;
       renderSchematicTrack();
+      if (STATE.currentView === 'home' && !STATE.isServiceClosed) {
+        renderTrainCards();
+      }
     }
   } catch (e) {
     console.error(e);
   }
+}
+
+// Network Waiting Indicator UI
+function updateNetworkWaitingUI() {
+  if (!dom.networkWaitingPill) return;
+  if (STATE.isServiceClosed) {
+    dom.networkWaitingPill.style.display = 'none';
+    return;
+  }
+
+  if (STATE.isWaitingForNetwork) {
+    dom.networkWaitingPill.style.display = 'inline-flex';
+    if (dom.waitingNetworkText) dom.waitingNetworkText.textContent = t('waitingNetwork');
+  } else {
+    dom.networkWaitingPill.style.display = 'none';
+  }
+}
+
+// Extrapolate seconds left using wall clock when offline / in tunnel
+function extrapolateOfflineTrains() {
+  if (!STATE.simulatedTrains) return;
+  const now = Date.now();
+  Object.keys(STATE.simulatedTrains).forEach(key => {
+    const train = STATE.simulatedTrains[key];
+    if (train && train.targetArrivalTime) {
+      train.secondsLeft = Math.max(0, Math.floor((train.targetArrivalTime - now) / 1000));
+    }
+  });
+}
+
+// Station Line Filter (Shown when a station has 2 or more lines)
+function renderStationLineFilter() {
+  const station = STATE.stationsMap[STATE.selectedStationId];
+  if (!dom.stationLineFilter) return;
+
+  if (!station || station.lines.length <= 1 || STATE.isServiceClosed) {
+    dom.stationLineFilter.style.display = 'none';
+    dom.stationLineFilter.innerHTML = '';
+    STATE.selectedStationLineFilter = null;
+    return;
+  }
+
+  // Default to first line if none or invalid line selected
+  if (!STATE.selectedStationLineFilter || !station.lines.includes(STATE.selectedStationLineFilter)) {
+    STATE.selectedStationLineFilter = station.lines[0];
+  }
+
+  dom.stationLineFilter.style.display = 'flex';
+
+  let html = '';
+  station.lines.forEach(line => {
+    const isActive = STATE.selectedStationLineFilter === line;
+    const col = STATE.colors[line] || '#0084c9';
+    html += `
+      <button class="filter-pill-btn ${isActive ? 'active' : ''}" data-line="${line}" style="--pill-color: ${col}">
+        <span class="filter-pill-dot"></span>
+        <span>Linha ${line}</span>
+      </button>
+    `;
+  });
+
+  dom.stationLineFilter.innerHTML = html;
+  dom.stationLineFilter.querySelectorAll('.filter-pill-btn').forEach(btn => {
+    btn.onclick = () => {
+      STATE.selectedStationLineFilter = btn.dataset.line;
+      renderStationLineFilter();
+      renderTrainCards();
+    };
+  });
 }
 
 // Active Station UI & Train Generation
@@ -310,9 +461,15 @@ async function updateActiveStationUI() {
   if (!station) return;
 
   dom.activeStationName.textContent = station.name;
-  dom.activeStationBadges.innerHTML = station.lines.map(line => {
-    return `<span class="line-badge ${line.toLowerCase()}">${line}</span>`;
-  }).join('');
+  if (station.lines.length > 1) {
+    dom.activeStationBadges.innerHTML = '';
+    dom.activeStationBadges.style.display = 'none';
+  } else {
+    dom.activeStationBadges.style.display = 'flex';
+    dom.activeStationBadges.innerHTML = station.lines.map(line => {
+      return `<span class="line-badge ${line.toLowerCase()}">${line}</span>`;
+    }).join('');
+  }
 
   if (STATE.userLocation) {
     const dist = calculateDistance(
@@ -327,28 +484,90 @@ async function updateActiveStationUI() {
     dom.stationDistBadge.style.display = 'none';
   }
 
+  if (dom.activeStationHero) {
+    dom.activeStationHero.style.display = STATE.isServiceClosed ? 'none' : 'flex';
+  }
+
+  updateNetworkWaitingUI();
+  renderStationLineFilter();
+
   await fetchWaitTimes();
-  initTrainCountdowns();
   renderTrainCards();
 }
 
 async function fetchWaitTimes() {
+  if (STATE.appMode === 'simulation' || STATE.appMode === 'delayed') {
+    STATE.isServiceClosed = false;
+    STATE.isWaitingForNetwork = false;
+    updateNetworkWaitingUI();
+    setupSimulatedTrains();
+    return;
+  }
+
   try {
     const res = await fetch(`/api/tempo-espera/${STATE.selectedStationId}`).then(r => r.json());
     if (res.success && res.serviceStatus) {
       STATE.serviceStatus = res.serviceStatus;
       STATE.isServiceClosed = res.serviceStatus.isClosed;
+      STATE.isWaitingForNetwork = false;
+      updateNetworkWaitingUI();
+
       if (typeof res.serviceStatus.diffMs === 'number') {
         STATE.secondsUntilReopen = Math.floor(res.serviceStatus.diffMs / 1000);
       }
 
       if (!STATE.isServiceClosed && Array.isArray(res.trains) && res.trains.length > 0) {
         parseRealTrains(res.trains);
+      } else if (!STATE.isServiceClosed) {
+        setupSimulatedTrains();
       }
     }
   } catch (err) {
-    console.error('Error fetching wait times:', err);
+    console.warn('Instabilidade de rede ao obter tempos:', err.message);
+    if (!STATE.isServiceClosed) {
+      STATE.isWaitingForNetwork = true;
+      updateNetworkWaitingUI();
+      extrapolateOfflineTrains();
+      if (!STATE.simulatedTrains || Object.keys(STATE.simulatedTrains).length === 0) {
+        setupSimulatedTrains();
+      }
+    }
   }
+}
+
+function setupSimulatedTrains() {
+  const station = STATE.stationsMap[STATE.selectedStationId];
+  if (!station) return;
+
+  station.lines.forEach(lineName => {
+    ['dir1', 'dir2'].forEach(dirKey => {
+      const key = `${STATE.selectedStationId}-${lineName}-${dirKey}`;
+      const isDelayed = (STATE.appMode === 'delayed' && lineName === 'Azul' && dirKey === 'dir1');
+
+      if (!STATE.simulatedTrains[key] || isDelayed) {
+        if (isDelayed) {
+          STATE.simulatedTrains[key] = {
+            secondsLeft: 705, // 11m 45s
+            targetArrivalTime: Date.now() + (705 * 1000),
+            initialSeconds: 780,
+            subsequentMinutes: 14,
+            isAffected: true
+          };
+        } else {
+          if (!STATE.simulatedTrains[key] || STATE.simulatedTrains[key].isAffected) {
+            const rSec = Math.floor(Math.random() * 120) + 60;
+            STATE.simulatedTrains[key] = {
+              secondsLeft: rSec,
+              targetArrivalTime: Date.now() + (rSec * 1000),
+              initialSeconds: 240,
+              subsequentMinutes: 4,
+              isAffected: false
+            };
+          }
+        }
+      }
+    });
+  });
 }
 
 function parseRealTrains(trainList) {
@@ -375,18 +594,24 @@ function parseRealTrains(trainList) {
         if (!isNaN(sec1) && sec1 >= 0) {
           STATE.simulatedTrains[key] = {
             secondsLeft: sec1,
+            targetArrivalTime: Date.now() + (sec1 * 1000),
             initialSeconds: Math.max(sec1, 240),
-            subsequentMinutes: sec2 > 0 ? Math.round(sec2 / 60) : 5
+            subsequentMinutes: sec2 > 0 ? Math.round(sec2 / 60) : 5,
+            isAffected: false
           };
+          STATE.lastSuccessfulSync = Date.now();
           return;
         }
       }
 
       if (!STATE.simulatedTrains[key]) {
+        const dSec = Math.floor(Math.random() * 120) + 60;
         STATE.simulatedTrains[key] = {
-          secondsLeft: Math.floor(Math.random() * 120) + 60,
+          secondsLeft: dSec,
+          targetArrivalTime: Date.now() + (dSec * 1000),
           initialSeconds: 240,
-          subsequentMinutes: 5
+          subsequentMinutes: 5,
+          isAffected: false
         };
       }
     });
@@ -394,8 +619,6 @@ function parseRealTrains(trainList) {
 }
 
 function renderServiceClosedCard() {
-  const station = STATE.stationsMap[STATE.selectedStationId];
-  const stationName = station ? station.name : '';
   const secondsLeft = Math.max(0, STATE.secondsUntilReopen || 0);
   const h = Math.floor(secondsLeft / 3600);
   const m = Math.floor((secondsLeft % 3600) / 60);
@@ -403,55 +626,23 @@ function renderServiceClosedCard() {
   
   const timeFormatted = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
-  const linesPills = (station ? station.lines : ['Azul', 'Amarela', 'Verde', 'Vermelha']).map(line => {
-    const col = STATE.colors[line] || '#0084c9';
-    return `
-      <div class="closed-line-chip" style="--chip-col: ${col}">
-        <span class="closed-chip-dot"></span>
-        <span class="closed-chip-name">${line}</span>
-        <span class="closed-chip-status">${t('lineStatusClosed')}</span>
-      </div>
-    `;
-  }).join('');
-
   dom.trainDirectionsContainer.innerHTML = `
     <div class="service-closed-card">
-      <div class="closed-card-badge">
-        <span class="closed-pulse-dot"></span>
-        <span>${t('nightServiceClosed')}</span>
-      </div>
-
-      <div class="closed-hero-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
-          <path d="M19 3v4"></path>
-          <path d="M21 5h-4"></path>
-        </svg>
-      </div>
-
       <h3 class="closed-card-title">${t('metroClosedTitle')}</h3>
 
-      <div class="closed-countdown-box">
+      <div class="closed-main-countdown">
         <span class="closed-countdown-prefix">${t('metroReopensIn')}</span>
         <div class="closed-countdown-value" id="closed-countdown-val">
           <span class="digits">${timeFormatted}</span>
           <span class="seconds-unit">${String(s).padStart(2, '0')}s</span>
         </div>
-        <span class="closed-countdown-sub">${t('scheduledReopenPrefix')} <strong>06:30</strong></span>
-      </div>
-
-      <div class="closed-info-grid">
-        <div class="closed-info-item">
-          <span class="info-label">${t('operatingHoursLabel')}</span>
-          <span class="info-val">${t('operatingHoursValue')}</span>
+        <div class="closed-countdown-sub">
+          ${t('scheduledReopenPrefix')} <strong class="reopen-hour">06:30</strong>
         </div>
       </div>
 
-      <div class="closed-lines-section">
-        <div class="closed-lines-label">${stationName ? `${stationName} • Linhas` : 'Linhas do Metro'}</div>
-        <div class="closed-lines-chips">
-          ${linesPills}
-        </div>
+      <div class="closed-footer-minimal">
+        <span>${t('operatingHoursLabel')}: <strong>06:30 — 01:00</strong></span>
       </div>
     </div>
   `;
@@ -475,7 +666,14 @@ function renderTrainCards() {
   const station = STATE.stationsMap[STATE.selectedStationId];
   if (!station) return;
 
+  renderStationLineFilter();
+
   dom.trainDirectionsContainer.innerHTML = '';
+
+  document.body.classList.toggle('service-closed', Boolean(STATE.isServiceClosed));
+  if (dom.activeStationHero) {
+    dom.activeStationHero.style.display = STATE.isServiceClosed ? 'none' : 'flex';
+  }
 
   if (STATE.isServiceClosed) {
     renderServiceClosedCard();
@@ -483,38 +681,56 @@ function renderTrainCards() {
   }
 
   station.lines.forEach(lineName => {
+    // Multi-line filter: show only active line if station has multiple lines
+    if (station.lines.length > 1 && STATE.selectedStationLineFilter && STATE.selectedStationLineFilter !== lineName) {
+      return;
+    }
+
     const lineColor = STATE.colors[lineName] || '#0084c9';
     const terminals = STATE.lineTerminals[lineName] || { dir1: 'Terminal 1', dir2: 'Terminal 2' };
     const stationsOnLine = STATE.lineOrders[lineName] || [];
     const currentIndex = stationsOnLine.indexOf(STATE.selectedStationId);
 
-    // Direction 1
-    const dir1Prev = (currentIndex > 0) ? STATE.stationsMap[stationsOnLine[currentIndex - 1]]?.name : t('prevStationDefault');
-    renderCard({
-      lineName,
-      lineColor,
-      dirKey: 'dir1',
-      destination: terminals.dir1,
-      targetName: station.name,
-      prevName: dir1Prev
-    });
+    // Direction 1 (only if current station is not the destination terminal itself)
+    const isAtDir1Terminal = station.name.toLowerCase().trim() === (terminals.dir1 || '').toLowerCase().trim();
+    if (!isAtDir1Terminal) {
+      const dir1Prev = (currentIndex > 0) ? STATE.stationsMap[stationsOnLine[currentIndex - 1]]?.name : t('prevStationDefault');
+      renderCard({
+        lineName,
+        lineColor,
+        dirKey: 'dir1',
+        destination: terminals.dir1,
+        targetName: station.name,
+        prevName: dir1Prev
+      });
+    }
 
-    // Direction 2
-    const dir2Prev = (currentIndex < stationsOnLine.length - 1) ? STATE.stationsMap[stationsOnLine[currentIndex + 1]]?.name : t('prevStationDefault');
-    renderCard({
-      lineName,
-      lineColor,
-      dirKey: 'dir2',
-      destination: terminals.dir2,
-      targetName: station.name,
-      prevName: dir2Prev
-    });
+    // Direction 2 (only if current station is not the destination terminal itself)
+    const isAtDir2Terminal = station.name.toLowerCase().trim() === (terminals.dir2 || '').toLowerCase().trim();
+    if (!isAtDir2Terminal) {
+      const dir2Prev = (currentIndex < stationsOnLine.length - 1) ? STATE.stationsMap[stationsOnLine[currentIndex + 1]]?.name : t('prevStationDefault');
+      renderCard({
+        lineName,
+        lineColor,
+        dirKey: 'dir2',
+        destination: terminals.dir2,
+        targetName: station.name,
+        prevName: dir2Prev
+      });
+    }
   });
 }
 
 function renderCard({ lineName, lineColor, dirKey, destination, targetName, prevName }) {
   const key = `${STATE.selectedStationId}-${lineName}-${dirKey}`;
-  const train = STATE.simulatedTrains[key] || { secondsLeft: 120, initialSeconds: 240, subsequentMinutes: 5 };
+  const train = STATE.simulatedTrains[key] || { secondsLeft: 120, initialSeconds: 240, subsequentMinutes: 5, isAffected: false };
+
+  const isLineDisrupted = STATE.lineStatuses && STATE.lineStatuses[lineName] && 
+    (STATE.lineStatuses[lineName].status !== 'normal' || (STATE.lineStatuses[lineName].code && STATE.lineStatuses[lineName].code !== '0'));
+
+  const isAffected = train.isAffected || 
+    (STATE.appMode === 'delayed' && lineName === 'Azul' && dirKey === 'dir1') ||
+    Boolean(isLineDisrupted);
 
   const minutes = Math.floor(train.secondsLeft / 60);
   const seconds = train.secondsLeft % 60;
@@ -535,19 +751,33 @@ function renderCard({ lineName, lineColor, dirKey, destination, targetName, prev
   const progressRatio = Math.max(0, Math.min(1, 1 - (train.secondsLeft / initial)));
   const progressPercent = Math.round(progressRatio * 92);
 
-  const paragensText = train.secondsLeft <= 15 
-    ? t('atStation') 
-    : (minutes === 0 ? t('approaching') : (minutes === 1 ? t('stop1') : `${minutes} ${t('stops')}`));
+  const paragensText = isAffected
+    ? t('delayedStatusText')
+    : (train.secondsLeft <= 15 
+        ? t('atStation') 
+        : (minutes === 0 ? t('approaching') : (minutes === 1 ? t('stop1') : `${minutes} ${t('stops')}`)));
 
   const cardHtml = `
-    <div class="train-direction-card" id="card-${key}" style="--card-line-color: ${lineColor}">
+    <div class="train-direction-card ${isAffected ? 'service-affected' : ''}" id="card-${key}" style="--card-line-color: ${lineColor}">
       <div class="card-top">
         <div>
           <div class="direction-line-pill">${t('line')} ${lineName}</div>
           <div class="direction-title">${t('towards')} ${destination}</div>
         </div>
-        <div class="big-countdown ${isArriving ? 'arriving' : ''}" id="val-${key}">
-          ${timeStr}
+        <div class="card-right">
+          ${isAffected ? `
+            <span class="service-affected-badge">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              ${t('serviceAffected')}
+            </span>
+          ` : ''}
+          <div class="big-countdown ${isArriving ? 'arriving' : ''}" id="val-${key}">
+            ${timeStr}
+          </div>
         </div>
       </div>
 
@@ -568,7 +798,7 @@ function renderCard({ lineName, lineColor, dirKey, destination, targetName, prev
         </div>
 
         <div class="rail-footer">
-          <span class="status-text" id="status-${key}">
+          <span class="status-text ${isAffected ? 'status-affected-text' : ''}" id="status-${key}">
             ${paragensText}
           </span>
           <span class="next-train-box">${t('next')} <strong class="next-train-num">${train.subsequentMinutes}</strong> ${t('minutes')}</span>
@@ -600,10 +830,13 @@ function tickTrains() {
       const train = STATE.simulatedTrains[key];
       if (!train) return;
 
-      if (train.secondsLeft > 0) {
+      if (train.targetArrivalTime && STATE.isWaitingForNetwork) {
+        train.secondsLeft = Math.max(0, Math.floor((train.targetArrivalTime - Date.now()) / 1000));
+      } else if (train.secondsLeft > 0) {
         train.secondsLeft -= 1;
       } else {
         train.secondsLeft = Math.floor(Math.random() * 90) + 180;
+        train.targetArrivalTime = Date.now() + (train.secondsLeft * 1000);
         train.initialSeconds = train.secondsLeft;
         train.subsequentMinutes = Math.floor(Math.random() * 3) + 4;
       }
@@ -618,7 +851,18 @@ function tickTrains() {
       const minutes = Math.floor(train.secondsLeft / 60);
       const seconds = train.secondsLeft % 60;
 
-      if (train.secondsLeft <= 12) {
+      const isLineDisrupted = STATE.lineStatuses && STATE.lineStatuses[lineName] && 
+        (STATE.lineStatuses[lineName].status !== 'normal' || (STATE.lineStatuses[lineName].code && STATE.lineStatuses[lineName].code !== '0'));
+
+      const isAffected = train.isAffected || 
+        (STATE.appMode === 'delayed' && lineName === 'Azul' && dirKey === 'dir1') ||
+        Boolean(isLineDisrupted);
+
+      if (isAffected) {
+        valEl.textContent = `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
+        valEl.className = 'big-countdown delayed';
+        if (statusEl) statusEl.textContent = t('delayedStatusText');
+      } else if (train.secondsLeft <= 12) {
         valEl.textContent = t('arriving');
         valEl.className = 'big-countdown arriving';
         if (statusEl) statusEl.textContent = t('atStation');
@@ -689,16 +933,7 @@ function renderSchematicTrack() {
     dom.bannerStatusPill.textContent = isOk ? t('normalStatus') : (statusData?.message || 'Aviso');
   }
 
-  // Meta chips (stations count, frequency, interchange count)
-  let interchangeCount = 0;
-  rawStationIds.forEach(id => {
-    const s = STATE.stationsMap[id];
-    if (s && (s.lines.length > 1 || TRANSIT_HUBS[id])) interchangeCount++;
-  });
-
   if (dom.chipStops) dom.chipStops.textContent = `${rawStationIds.length} ${t('stops')}`;
-  if (dom.chipFrequency) dom.chipFrequency.textContent = t('frequency');
-  if (dom.chipInterchange) dom.chipInterchange.textContent = `${interchangeCount} ${t('interchanges')}`;
 
   // Update Direction Switcher Labels
   if (dom.dirLabelForward) dom.dirLabelForward.textContent = `➔ ${t('towardsPrefix')} ${terminals.dir2}`;
@@ -868,6 +1103,7 @@ function closeStationSheet() {
 function selectStation(stationId) {
   if (!STATE.stationsMap[stationId]) return;
   STATE.selectedStationId = stationId;
+  STATE.selectedStationLineFilter = 'ALL';
   dom.stationSearch.value = '';
   dom.stationDropdown.style.display = 'none';
   dom.btnClearSearch.style.display = 'none';
@@ -975,6 +1211,7 @@ function setupEventListeners() {
   dom.btnGps.addEventListener('click', locateStation);
   if (dom.btnTheme) dom.btnTheme.addEventListener('click', toggleTheme);
   if (dom.btnLang) dom.btnLang.addEventListener('click', toggleLanguage);
+  if (dom.btnModeToggle) dom.btnModeToggle.addEventListener('click', cycleMode);
   
   dom.btnRefresh.addEventListener('click', async () => {
     dom.btnRefresh.classList.add('refreshing');
@@ -1033,6 +1270,31 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Mobile / Visibility Resync: refresh immediately upon unlocking phone or returning to tab
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      extrapolateOfflineTrains();
+      fetchWaitTimes();
+      fetchNetworkStatus();
+    }
+  });
+
+  // Online / Offline Detection
+  window.addEventListener('online', () => {
+    STATE.isWaitingForNetwork = false;
+    updateNetworkWaitingUI();
+    fetchWaitTimes();
+    fetchNetworkStatus();
+  });
+
+  window.addEventListener('offline', () => {
+    if (!STATE.isServiceClosed) {
+      STATE.isWaitingForNetwork = true;
+      updateNetworkWaitingUI();
+      extrapolateOfflineTrains();
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -4,12 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>NoMetro • Metro de Lisboa em Tempo Real</title>
-  <meta name="description" content="Acompanhe o tempo de espera do Metro de Lisboa em tempo real com indicador visual de aproximação dos comboios.">
+  <meta name="description" content="Consulte os tempos de espera do Metro de Lisboa em tempo real com indicador visual de aproximação dos comboios.">
   <meta name="theme-color" content="#0b0f19">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,6 +32,12 @@
       </div>
 
       <div class="header-actions">
+        <!-- Modo Simulação (desativado no frontend de produção; reativável a pedido em dev)
+        <button id="btn-mode-toggle" class="btn-mode-pill" aria-label="Modo de dados" title="Clique para alternar: Tempo Real / Simulação / Atraso">
+          <span class="mode-dot"></span>
+          <span id="mode-label">Real</span>
+        </button>
+        -->
         <button id="btn-lang" class="btn-icon btn-lang-toggle" aria-label="Mudar idioma" title="PT / EN">
           <span id="lang-label">EN</span>
         </button>
@@ -66,14 +74,14 @@
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" id="station-search" placeholder="Buscar estação..." autocomplete="off">
+          <input type="text" id="station-search" placeholder="Pesquisar estação..." autocomplete="off">
           <button id="btn-clear-search" class="btn-clear" style="display: none;">✕</button>
         </div>
         <div id="station-dropdown" class="station-dropdown" style="display: none;"></div>
       </div>
 
       <!-- Active Station Main Display (BIG & FOCUSED) -->
-      <div class="active-station-hero">
+      <div class="active-station-hero" id="active-station-hero">
         <div class="hero-left">
           <h2 id="active-station-name">Marquês de Pombal</h2>
           <div class="station-badges" id="active-station-badges"></div>
@@ -81,6 +89,15 @@
         <div id="station-dist-badge" class="dist-pill" style="display: none;">
           <span>GPS</span>
         </div>
+      </div>
+
+      <!-- Station Line Filter (Shown only when station has 2+ lines) -->
+      <div class="station-line-filter" id="station-line-filter" style="display: none;"></div>
+
+      <!-- Offline / Waiting for Network Indicator -->
+      <div class="network-waiting-pill" id="network-waiting-pill" style="display: none;">
+        <span class="waiting-dot"></span>
+        <span id="waiting-network-text">A aguardar rede • Estimativa baseada no último sinal</span>
       </div>
 
       <!-- Live Train Cards -->
@@ -123,9 +140,7 @@
           </div>
 
           <div class="line-banner-chips" id="line-banner-chips">
-            <span class="meta-chip" id="chip-stops">18 estações</span>
-            <span class="meta-chip" id="chip-frequency">~4 min</span>
-            <span class="meta-chip" id="chip-interchange">3 correspondências</span>
+            <span class="meta-chip" id="chip-stops">18 paragens</span>
           </div>
 
           <!-- Direction Toggle Switcher -->

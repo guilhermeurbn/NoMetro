@@ -1,7 +1,7 @@
 {
-  "name": "NoMetro - Metro de Lisboa em Tempo Real",
+  "name": "NoMetro • Metro de Lisboa em Tempo Real",
   "short_name": "NoMetro",
-  "description": "Veja o metro de Lisboa se aproximando em tempo real com contagem regressiva e status das linhas.",
+  "description": "Consulte os tempos de espera do Metro de Lisboa em tempo real com indicador visual de aproximação dos comboios.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0f19",
