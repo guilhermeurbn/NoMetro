@@ -1,0 +1,1245 @@
+/* ========================================================
+   NoMetro • Lisboa - Apple iOS Design System
+   Refined Typography, Rounded Squircles & Native Apple Feel
+   ======================================================== */
+
+:root {
+  /* Apple iOS Dark Palette (OLED Pitch Black & System Grays) */
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-card: #1c1c1e;
+  --bg-card-inner: #121214;
+  --bg-input: #1c1c1e;
+  --bg-elevated: #2c2c2e;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+
+  --text-primary: #ffffff;
+  --text-secondary: #8e8e93;
+  --text-muted: #636366;
+
+  /* Official Lisbon Metro Colors - Pure flat tones */
+  --c-azul: #0084c9;
+  --c-amarela: #ffbe00;
+  --c-verde: #00a650;
+  --c-vermelha: #e52329;
+
+  --c-success: #30d158;
+  --c-warning: #ffd60a;
+
+  /* Apple Radii */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+  --radius-pill: 9999px;
+}
+
+/* Light Mode (Apple iOS Light Palette) */
+[data-theme="light"] {
+  --bg-primary: #f2f2f7;
+  --bg-secondary: #f2f2f7;
+  --bg-card: #ffffff;
+  --bg-card-inner: #f2f2f7;
+  --bg-input: #ffffff;
+  --bg-elevated: #e5e5ea;
+  --border: rgba(0, 0, 0, 0.07);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+
+  --text-primary: #000000;
+  --text-secondary: #6c6c70;
+  --text-muted: #8e8e93;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html, body {
+  touch-action: manipulation;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Apple-style iPhone Frame Container */
+.app-wrapper {
+  width: 100%;
+  max-width: 440px;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 16px));
+}
+
+/* ========================================================
+   Header (Apple iOS Navigation Bar Style)
+   ======================================================== */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  background: var(--bg-primary);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: default;
+  user-select: none;
+}
+
+.brand h1 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+/* Color Palette Capsule - Premium Integrated Designer Badge (Static visual mark) */
+.metro-palette-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  padding: 4px 7px;
+  border-radius: var(--radius-pill);
+  cursor: default;
+  pointer-events: none;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .metro-palette-capsule {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.palette-pill {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.metro-palette-capsule:hover .palette-pill,
+.metro-palette-capsule:active .palette-pill {
+  transform: scale(1.15);
+}
+
+.palette-pill.azul { background: var(--c-azul); }
+.palette-pill.amarela { background: var(--c-amarela); }
+.palette-pill.verde { background: var(--c-verde); }
+.palette-pill.vermelha { background: var(--c-vermelha); }
+
+/* Header Round Action Buttons */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.btn-icon:active {
+  transform: scale(0.92);
+  background: var(--bg-elevated);
+}
+
+.btn-lang-toggle {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: #0a84ff;
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.refreshing .refresh-icon {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* ========================================================
+   Search Bar (Apple Maps / Spotlight Style)
+   ======================================================== */
+.station-search-container {
+  padding: 6px 20px 10px;
+  position: relative;
+}
+
+.search-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 15px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.search-input-box input {
+  width: 100%;
+  padding: 11px 36px 11px 40px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  font-size: 0.92rem;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.search-input-box input:focus {
+  outline: none;
+  background: var(--bg-card);
+  border-color: #0a84ff;
+}
+
+.btn-clear {
+  position: absolute;
+  right: 12px;
+  background: var(--bg-elevated);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Dropdown Autocomplete */
+.station-dropdown {
+  position: absolute;
+  top: 56px;
+  left: 20px;
+  right: 20px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  z-index: 100;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover, .dropdown-item:active {
+  background: var(--bg-elevated);
+}
+
+.dropdown-station-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.dropdown-line-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.line-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ========================================================
+   Active Station Display (Apple Bold Typography)
+   ======================================================== */
+.active-station-hero {
+  padding: 8px 20px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.hero-left h2 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1.08;
+  margin-bottom: 8px;
+}
+
+.station-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.line-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.line-badge.azul { background: var(--c-azul); }
+.line-badge.amarela { background: var(--c-amarela); color: #000; }
+.line-badge.verde { background: var(--c-verde); }
+.line-badge.vermelha { background: var(--c-vermelha); }
+
+.dist-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #0a84ff;
+  background: rgba(10, 132, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+/* ========================================================
+   Live Train Directions Cards (Apple Squircles & Clean Flat)
+   ======================================================== */
+.train-directions-container {
+  padding: 4px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.train-direction-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.direction-line-pill {
+  font-size: 0.61rem; /* Diminuído em 15% (0.72rem -> 0.61rem) */
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--card-line-color, var(--c-azul));
+  margin-bottom: 2px;
+}
+
+.direction-title {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.42rem; /* Aumentado em 5% (1.35rem -> 1.42rem) */
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+/* BIG COUNTDOWN - Apple Style High Impact Numbers */
+.big-countdown {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 2.85rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+.big-countdown.arriving {
+  color: #0a84ff;
+  font-size: 2.2rem;
+}
+
+/* Clean Rail Track (Apple rounded box) */
+.rail-track-box {
+  background: var(--bg-card-inner);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+}
+
+.rail-stations {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.rail-stations .current {
+  color: var(--text-primary);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pin-svg-icon {
+  color: #ff453a;
+  flex-shrink: 0;
+}
+
+.rail-line {
+  position: relative;
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  margin: 10px 4px 12px;
+}
+
+.rail-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--card-line-color, var(--c-azul));
+  border-radius: var(--radius-pill);
+  transition: width 1s linear;
+}
+
+.train-cursor {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  background: #ffffff;
+  border: 3.5px solid var(--card-line-color, var(--c-azul));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: left 1s linear;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.train-cursor svg {
+  width: 9px;
+  height: 9px;
+  color: #000;
+}
+
+.rail-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.rail-footer .status-text {
+  color: #0a84ff;
+  font-weight: 700;
+}
+
+.next-train-box {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.next-train-num {
+  color: #ff9f0a;
+  font-weight: 800;
+  font-size: 0.85rem;
+  margin: 0 1px;
+}
+
+/* ========================================================
+   Floating Location Action Button (Apple Maps Style)
+   Positioned at lower right corner near thumb reach
+   ======================================================== */
+.floating-gps-btn {
+  position: fixed;
+  bottom: calc(76px + env(safe-area-inset-bottom, 16px));
+  right: max(16px, calc((100vw - 440px) / 2 + 16px));
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(28, 28, 30, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #0a84ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9998;
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.floating-gps-btn:active {
+  transform: scale(0.90);
+  background: rgba(44, 44, 46, 0.95);
+}
+
+.floating-gps-btn svg {
+  width: 20px;
+  height: 20px;
+  transform: rotate(-15deg);
+  transition: transform 0.2s ease;
+}
+
+.floating-gps-btn:active svg {
+  transform: rotate(0deg) scale(0.95);
+}
+
+.floating-gps-btn.locating svg {
+  animation: gps-pulse 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes gps-pulse {
+  from { transform: scale(0.9) rotate(-15deg); opacity: 0.5; }
+  to { transform: scale(1.15) rotate(-15deg); opacity: 1; }
+}
+
+/* Light Mode Floating GPS Button */
+[data-theme="light"] .floating-gps-btn {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  color: #007aff;
+  box-shadow: 
+    0 6px 18px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] .floating-gps-btn:active {
+  background: #e5e5ea;
+}
+
+/* ========================================================
+   Bottom Navigation (Apple Docked Liquid Glass Tab Bar)
+   ======================================================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 440px;
+  height: calc(64px + env(safe-area-inset-bottom, 16px));
+  
+  /* Material Liquid Glass Translúcido */
+  background: rgba(18, 18, 20, 0.84);
+  backdrop-filter: blur(25px) saturate(190%);
+  -webkit-backdrop-filter: blur(25px) saturate(190%);
+  
+  /* Borda superior de vidro elegante com cantos arredondados */
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: none;
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+  
+  box-shadow: 
+    0 -10px 32px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-around;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 16px));
+  z-index: 9999;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Light Mode Docked Liquid Glass */
+[data-theme="light"] .bottom-nav {
+  background: rgba(255, 255, 255, 0.88);
+  border-top: 1px solid rgba(0, 0, 0, 0.09);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  box-shadow: 
+    0 -10px 28px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  height: 48px;
+  border-radius: 14px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.nav-btn:active {
+  transform: scale(0.92);
+}
+
+.nav-btn.active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+[data-theme="light"] .nav-btn.active {
+  color: #000000;
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.nav-btn svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s ease;
+}
+
+.nav-btn.active svg {
+  color: #0a84ff;
+  transform: translateY(-1px);
+}
+
+/* ========================================================
+   Modals (Apple Bottom Sheet Style - Full Clean Overlay)
+   ======================================================== */
+.view-modal {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 440px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.modal-card {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-top-left-radius: var(--radius-xl);
+  border-top-right-radius: var(--radius-xl);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 20px 30px;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.modal-header h3 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.btn-close-modal {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+/* ========================================================
+   VIEW 2: Inline Rede Page (Linhas, Paragens & Correspondências)
+   ======================================================== */
+.network-page-container {
+  padding: 8px 18px calc(110px + env(safe-area-inset-bottom, 20px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 4 Lines Segmented Tabs */
+.network-line-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+}
+
+.line-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 4px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.line-tab-btn:active {
+  transform: scale(0.94);
+}
+
+.line-tab-btn.active {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .line-tab-btn.active {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tab-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--tab-line-color);
+  flex-shrink: 0;
+}
+
+/* Line Banner Card */
+.line-banner-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.line-banner-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--banner-color, var(--c-azul));
+}
+
+.line-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.banner-line-tag {
+  font-size: 0.61rem; /* Diminuído em 15% (0.72rem -> 0.61rem) */
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--banner-color, var(--c-azul));
+}
+
+.banner-terminals {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.21rem; /* Aumentado em 5% (1.15rem -> 1.21rem) */
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 3px;
+  letter-spacing: -0.01em;
+}
+
+.banner-status-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.banner-status-pill.ok {
+  background: rgba(48, 209, 88, 0.15);
+  color: var(--c-success);
+}
+
+.banner-status-pill.perturbed {
+  background: rgba(255, 159, 10, 0.15);
+  color: var(--c-warning);
+}
+
+.line-banner-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meta-chip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+/* Direction Segmented Control */
+.direction-segmented-control {
+  display: flex;
+  gap: 6px;
+  background: var(--bg-card-inner);
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+.dir-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.dir-btn.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .dir-btn.active {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Schematic Vertical Metro Track */
+.schematic-track-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  padding-left: 6px;
+}
+
+/* Continuous vertical track rail */
+.schematic-track-container::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 18px;
+  bottom: 18px;
+  width: 5px;
+  background: var(--banner-color, var(--c-azul));
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.schematic-station-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.schematic-station-row:active {
+  transform: scale(0.985);
+  background: var(--bg-elevated);
+}
+
+.schematic-station-row.current-active {
+  border-color: var(--banner-color, var(--c-azul));
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.station-node-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 4px solid var(--banner-color, var(--c-azul));
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--bg-card);
+}
+
+.schematic-station-row.terminal-station .station-node-dot {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border-width: 4.5px;
+}
+
+.schematic-station-row.current-active .station-node-dot {
+  background: var(--banner-color, var(--c-azul));
+  border-color: #ffffff;
+  box-shadow: 0 0 0 3px var(--banner-color, var(--c-azul));
+}
+
+.station-row-info {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.station-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.station-row-title {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.station-subtitle-gps {
+  font-size: 0.7rem;
+  color: #0a84ff;
+  font-weight: 600;
+}
+
+.station-transfer-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.schematic-train-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  background: rgba(255, 159, 10, 0.16);
+  border: 1px solid rgba(255, 159, 10, 0.35);
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #ff9f0a;
+}
+
+.train-pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff9f0a;
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.badge-transfer-metro {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+}
+
+.badge-hub-icon {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+/* Station Detail Action Sheet (Inline Apple modal) */
+.station-detail-sheet {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: sheetFadeIn 0.2s ease-out;
+}
+
+.station-detail-card {
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  border-top-left-radius: 26px;
+  border-top-right-radius: 26px;
+  padding: 14px 20px calc(24px + env(safe-area-inset-bottom, 16px));
+  box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 440px;
+  width: 100%;
+  margin: 0 auto;
+  animation: sheetSlideUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes sheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes sheetFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet-drag-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  align-self: center;
+  margin-bottom: 2px;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sheet-lines {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+
+.sheet-title {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.sheet-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.sheet-connections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sheet-live-trains {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.sheet-train-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sheet-train-row:last-child {
+  border-bottom: none;
+}
+
+.sheet-train-dir {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheet-dir-name {
+  font-size: 0.86rem; /* Aumentado em 5% (0.82rem -> 0.86rem) */
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sheet-dir-line {
+  font-size: 0.60rem; /* Diminuído em 15% (0.70rem -> 0.60rem) */
+  color: var(--text-muted);
+}
+
+.sheet-train-time {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ff9f0a;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sheet-btn-primary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: #0a84ff;
+  color: #ffffff;
+  border: none;
+  border-radius: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.sheet-btn-primary:active {
+  transform: scale(0.97);
+  background: #0071e3;
+}
+
+/* Footer ticker */
+.app-footer {
+  display: none;
+}

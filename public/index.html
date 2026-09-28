@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>NoMetro • Metro de Lisboa em Tempo Real</title>
+  <meta name="description" content="Acompanhe o tempo de espera do Metro de Lisboa em tempo real com indicador visual de aproximação dos comboios.">
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Minimalist Header -->
+    <header class="app-header">
+      <div class="brand">
+        <h1>NoMetro</h1>
+        <div class="metro-palette-capsule" aria-hidden="true">
+          <span class="palette-pill azul"></span>
+          <span class="palette-pill amarela"></span>
+          <span class="palette-pill verde"></span>
+          <span class="palette-pill vermelha"></span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-lang" class="btn-icon btn-lang-toggle" aria-label="Mudar idioma" title="PT / EN">
+          <span id="lang-label">EN</span>
+        </button>
+        <button id="btn-theme" class="btn-icon" aria-label="Alternar tema claro e escuro" title="Tema Claro / Escuro">
+          <svg class="theme-icon moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+        <button id="btn-refresh" class="btn-icon" aria-label="Atualizar">
+          <svg class="refresh-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- VIEW 1: PRÓXIMO METRO -->
+    <main id="view-next-train" class="view-page active">
+      <!-- Station Search & Active Selector -->
+      <div class="station-search-container">
+        <div class="search-input-box">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="station-search" placeholder="Buscar estação..." autocomplete="off">
+          <button id="btn-clear-search" class="btn-clear" style="display: none;">✕</button>
+        </div>
+        <div id="station-dropdown" class="station-dropdown" style="display: none;"></div>
+      </div>
+
+      <!-- Active Station Main Display (BIG & FOCUSED) -->
+      <div class="active-station-hero">
+        <div class="hero-left">
+          <h2 id="active-station-name">Marquês de Pombal</h2>
+          <div class="station-badges" id="active-station-badges"></div>
+        </div>
+        <div id="station-dist-badge" class="dist-pill" style="display: none;">
+          <span>GPS</span>
+        </div>
+      </div>
+
+      <!-- Live Train Cards -->
+      <div class="train-directions-container" id="train-directions-container">
+        <!-- Injected via app.js -->
+      </div>
+    </main>
+
+    <!-- VIEW 2: REDE DO METRO (PÁGINA DEDICADA INTEGRADA) -->
+    <main id="view-network" class="view-page" style="display: none;">
+      <div class="network-page-container">
+        <!-- Segmented 4 Line Selector Tabs -->
+        <div class="network-line-tabs" id="network-line-tabs">
+          <button class="line-tab-btn active" data-line="Azul" style="--tab-line-color: #0084c9;">
+            <span class="tab-dot"></span>
+            <span class="tab-label">Azul</span>
+          </button>
+          <button class="line-tab-btn" data-line="Amarela" style="--tab-line-color: #ffbe00;">
+            <span class="tab-dot"></span>
+            <span class="tab-label">Amarela</span>
+          </button>
+          <button class="line-tab-btn" data-line="Verde" style="--tab-line-color: #00a650;">
+            <span class="tab-dot"></span>
+            <span class="tab-label">Verde</span>
+          </button>
+          <button class="line-tab-btn" data-line="Vermelha" style="--tab-line-color: #e52329;">
+            <span class="tab-dot"></span>
+            <span class="tab-label">Vermelha</span>
+          </button>
+        </div>
+
+        <!-- Line Status & Terminals Card with Direction Switcher -->
+        <div class="line-banner-card" id="line-banner-card">
+          <div class="line-banner-top">
+            <div>
+              <span class="banner-line-tag" id="banner-line-tag">Linha Azul</span>
+              <h3 class="banner-terminals" id="banner-terminals">Reboleira ↔ Santa Apolónia</h3>
+            </div>
+            <span class="banner-status-pill ok" id="banner-status-pill">Normal</span>
+          </div>
+
+          <div class="line-banner-chips" id="line-banner-chips">
+            <span class="meta-chip" id="chip-stops">18 estações</span>
+            <span class="meta-chip" id="chip-frequency">~4 min</span>
+            <span class="meta-chip" id="chip-interchange">3 correspondências</span>
+          </div>
+
+          <!-- Direction Toggle Switcher -->
+          <div class="direction-segmented-control" id="direction-switcher">
+            <button class="dir-btn active" data-dir="forward" id="dir-btn-forward">
+              <span id="dir-label-forward">➔ Para Santa Apolónia</span>
+            </button>
+            <button class="dir-btn" data-dir="backward" id="dir-btn-backward">
+              <span id="dir-label-backward">➔ Para Reboleira</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Metro Schematic Vertical Track Route -->
+        <div class="schematic-track-container" id="schematic-track-container">
+          <!-- Populated via app.js -->
+        </div>
+      </div>
+
+      <!-- Station Detail Action Sheet (Inline Apple modal inside Rede) -->
+      <div class="station-detail-sheet" id="station-detail-sheet" style="display: none;">
+        <div class="station-detail-card">
+          <div class="sheet-drag-handle"></div>
+          <div class="sheet-header">
+            <div>
+              <div class="sheet-lines" id="sheet-station-lines"></div>
+              <h3 class="sheet-title" id="sheet-station-name">Marquês de Pombal</h3>
+            </div>
+            <button class="sheet-close-btn" id="sheet-close-btn" aria-label="Fechar">✕</button>
+          </div>
+
+          <div class="sheet-connections" id="sheet-connections"></div>
+
+          <!-- Live wait times preview for both directions of this station -->
+          <div class="sheet-live-trains" id="sheet-live-trains"></div>
+
+          <div class="sheet-actions">
+            <button class="sheet-btn-primary" id="sheet-btn-select">
+              <span id="sheet-select-label">Ver no Próximo Metro</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Floating Bottom-Right Location Action Button (Apple Maps style) -->
+    <button id="btn-gps" class="floating-gps-btn" aria-label="Usar minha localização" title="Estação mais próxima">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+      </svg>
+    </button>
+
+    <!-- Permanent Bottom Minimalist Navigation (Metro & Rede) -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="next-train">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>Metro</span>
+      </button>
+      <button class="nav-btn" data-view="network">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+          <circle cx="7" cy="6" r="2" fill="currentColor"/>
+          <circle cx="17" cy="12" r="2" fill="currentColor"/>
+          <circle cx="11" cy="18" r="2" fill="currentColor"/>
+        </svg>
+        <span>Rede</span>
+      </button>
+    </nav>
+
+    <!-- Bottom Status Info Bar -->
+    <footer class="app-footer">
+      <div class="footer-status">
+        <span class="update-label">Última atualização: <strong id="last-update-time">--:--:--</strong></span>
+      </div>
+      <div class="refresh-progress-track">
+        <div class="refresh-progress-bar" id="refresh-progress"></div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "NoMetro - Metro de Lisboa em Tempo Real",
+  "short_name": "NoMetro",
+  "description": "Veja o metro de Lisboa se aproximando em tempo real com contagem regressiva e status das linhas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#0084c9",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

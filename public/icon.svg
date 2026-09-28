@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="128" fill="#0b0f19"/>
+  <circle cx="256" cy="256" r="210" stroke="#0084c9" stroke-width="20" stroke-dasharray="10 15" opacity="0.3"/>
+  <rect x="116" y="116" width="280" height="280" rx="60" fill="url(#metroGradient)"/>
+  <path d="M166 230C166 185 200 160 256 160C312 160 346 185 346 230V310C346 335 325 350 300 350L315 375H197L212 350C187 350 166 335 166 310V230Z" fill="#ffffff"/>
+  <rect x="190" y="200" width="132" height="60" rx="10" fill="#0b0f19"/>
+  <circle cx="205" cy="305" r="15" fill="#f6b21b"/>
+  <circle cx="307" cy="305" r="15" fill="#009e54"/>
+  <defs>
+    <linearGradient id="metroGradient" x1="116" y1="116" x2="396" y2="396" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0084c9"/>
+      <stop offset="0.5" stop-color="#009e54"/>
+      <stop offset="1" stop-color="#e30613"/>
+    </linearGradient>
+  </defs>
+</svg>
