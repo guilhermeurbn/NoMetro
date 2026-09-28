@@ -33,6 +33,9 @@
   --radius-lg: 24px;
   --radius-xl: 30px;
   --radius-pill: 9999px;
+
+  /* Safe Area Fallbacks */
+  --safe-area-top-fallback: 0px;
 }
 
 /* Light Mode (Apple iOS Light Palette) */
@@ -60,7 +63,11 @@
 }
 
 html, body {
+  margin: 0;
+  padding: 0;
   touch-action: manipulation;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -68,11 +75,48 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Metro View: Strict No-Scroll (Entire UI fits screen with zero overflow/bounce) */
+body.view-metro-active,
+body:not(.view-network-active) {
+  overflow: hidden !important;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+body.view-metro-active .app-wrapper,
+body:not(.view-network-active) .app-wrapper {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+/* Rede View: Scrollable but stops cleanly without black void */
+body.view-network-active {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body.view-network-active .app-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: visible;
+  padding-bottom: 0;
 }
 
 /* ========================================================
@@ -142,12 +186,11 @@ body {
 .app-wrapper {
   width: 100%;
   max-width: 440px;
-  min-height: 100vh;
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
   position: relative;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 16px));
+  padding-bottom: 0;
 }
 
 /* ========================================================
@@ -157,7 +200,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px 12px;
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 8px), calc(var(--safe-area-top-fallback, 0px) + 8px), 16px);
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: 8px;
   background: var(--bg-primary);
   position: sticky;
   top: 0;
@@ -292,7 +338,7 @@ body {
    Search Bar (Apple Maps / Spotlight Style)
    ======================================================== */
 .station-search-container {
-  padding: 6px 20px 10px;
+  padding: 4px 20px 8px;
   position: relative;
 }
 
@@ -317,7 +363,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);
   color: var(--text-primary);
-  font-size: 0.92rem;
+  font-size: 16px;
   font-family: inherit;
   font-weight: 500;
   transition: all 0.2s ease;
@@ -408,7 +454,7 @@ body {
    Active Station Display (Apple Bold Typography)
    ======================================================== */
 .active-station-hero {
-  padding: 8px 20px 14px;
+  padding: 4px 20px 10px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -583,21 +629,33 @@ body.service-closed .active-station-hero {
   box-shadow: 0 0 6px rgba(217, 119, 6, 0.5);
 }
 
-.train-directions-container {
-  padding: 4px 20px 20px;
+#view-next-train {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 16px));
+}
+
+.train-directions-container {
+  flex: 1;
+  min-height: 0;
+  padding: 2px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.5vh, 14px);
+  overflow: hidden;
 }
 
 .train-direction-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 18px 20px;
+  padding: clamp(12px, 1.8vh, 18px) 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: clamp(6px, 1.2vh, 12px);
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -909,9 +967,9 @@ body.service-closed .active-station-hero {
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
   
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-around;
-  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 16px));
+  padding: 4px 24px calc(4px + env(safe-area-inset-bottom, 16px));
   z-index: 9999;
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
@@ -929,7 +987,6 @@ body.service-closed .active-station-hero {
 }
 
 .nav-btn {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -939,11 +996,14 @@ body.service-closed .active-station-hero {
   border: none;
   color: var(--text-muted);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   cursor: pointer;
-  height: 48px;
-  border-radius: 14px;
+  height: 42px;
+  width: 86px;
+  max-width: 96px;
+  padding: 3px 6px;
+  border-radius: var(--radius-pill);
   transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -953,23 +1013,45 @@ body.service-closed .active-station-hero {
 
 .nav-btn.active {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.13);
+  border-radius: var(--radius-pill);
 }
 
 [data-theme="light"] .nav-btn.active {
   color: #000000;
   background: rgba(0, 0, 0, 0.07);
+  border-radius: var(--radius-pill);
 }
 
 .nav-btn svg {
-  width: 20px;
-  height: 20px;
-  transition: transform 0.2s ease;
+  width: 24px;
+  height: 24px;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.nav-btn.active svg {
-  color: #0a84ff;
-  transform: translateY(-1px);
+.nav-btn .metro-train-icon {
+  color: var(--text-muted);
+  stroke-width: 10;
+}
+
+.nav-btn.active .metro-train-icon {
+  color: #ffffff;
+  stroke-width: 10;
+  transform: translateY(-0.5px);
+}
+
+[data-theme="light"] .nav-btn.active .metro-train-icon {
+  color: #000000;
+}
+
+.nav-btn:not(.active) .lines-multi-icon {
+  opacity: 0.6;
+  filter: saturate(0.85);
+}
+
+.nav-btn.active .lines-multi-icon {
+  opacity: 1;
+  transform: translateY(-0.5px);
 }
 
 /* ========================================================
@@ -1034,7 +1116,7 @@ body.service-closed .active-station-hero {
    VIEW 2: Inline Rede Page (Linhas, Paragens & Correspondências)
    ======================================================== */
 .network-page-container {
-  padding: 8px 18px calc(110px + env(safe-area-inset-bottom, 20px));
+  padding: 8px 18px calc(76px + env(safe-area-inset-bottom, 16px));
   display: flex;
   flex-direction: column;
   gap: 14px;

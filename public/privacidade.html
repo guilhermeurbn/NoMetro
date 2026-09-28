@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade • NoMetro</title>
+  <link rel="icon" href="/favicon.ico">
+  <style>
+    :root {
+      --bg: #000000;
+      --card: #1c1c1e;
+      --text: #ffffff;
+      --text-muted: #8e8e93;
+      --accent: #0084c9;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f2f2f7;
+        --card: #ffffff;
+        --text: #000000;
+        --text-muted: #6c6c70;
+        --border: rgba(0, 0, 0, 0.08);
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 32px 20px 60px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 680px;
+      width: 100%;
+    }
+    .header {
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+    }
+    .brand {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .updated {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    p, ul {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    p:last-child { margin-bottom: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 18px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">NoMetro • Lisboa</div>
+      <h1>Política de Privacidade</h1>
+      <div class="updated">Última atualização: Setembro de 2026</div>
+    </div>
+
+    <section>
+      <h2>1. Compromisso de Privacidade</h2>
+      <p>O <strong>NoMetro</strong> foi concebido para ser uma ferramenta rápida, simples e que respeita integralmente a privacidade dos seus utilizadores. Não recolhemos dados pessoais desnecessários, não criamos perfis de utilizador e não vendemos quaisquer informações a terceiros.</p>
+    </section>
+
+    <section>
+      <h2>2. Dados de Localização (GPS)</h2>
+      <p>A aplicação pode solicitar permissão de acesso à sua localização geográfica enquanto a app estiver em uso.</p>
+      <ul>
+        <li><strong>Finalidade:</strong> A localização é utilizada exclusivamente para calcular e identificar a estação do Metropolitano de Lisboa mais próxima de si.</li>
+        <li><strong>Processamento Local:</strong> As coordenadas de GPS são processadas no próprio dispositivo do utilizador e nunca são gravadas, partilhadas ou transmitidas para servidores externos com identificadores pessoais.</li>
+        <li><strong>Opcional:</strong> A permissão é estritamente opcional. Pode recusar o acesso e continuar a pesquisar qualquer estação manualmente.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>3. Armazenamento Local no Dispositivo</h2>
+      <p>A aplicação armazena pequenas preferências no próprio telemóvel (como a última estação consultada, o histórico de pesquisas recentes e o tema claro/escuro) através do armazenamento local seguro do sistema.</p>
+      <p>Estes dados permanecem apenas no seu dispositivo e podem ser eliminados a qualquer momento desinstalando a aplicação ou limpando os dados de navegação.</p>
+    </section>
+
+    <section>
+      <h2>4. Dados Públicos de Trânsito</h2>
+      <p>O NoMetro obtém horários, frequências e alertas em tempo real através da API pública oficial do Metropolitano de Lisboa (Metropolitano de Lisboa, E.P.E.). Nenhuma informação pessoal é enviada nessa consulta.</p>
+    </section>
+
+    <section>
+      <h2>5. Contacto</h2>
+      <p>Caso tenha alguma dúvida sobre esta política de privacidade, pode contactar-nos diretamente através do nosso site oficial em <a href="https://nometro.pt">nometro.pt</a>.</p>
+    </section>
+
+    <a href="/" class="back-btn">← Voltar ao NoMetro</a>
+  </div>
+</body>
+</html>

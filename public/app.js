@@ -7,6 +7,32 @@ if (typeof location !== 'undefined' && location.protocol === 'http:' && location
   location.href = location.href.replace('http:', 'https:');
 }
 
+// Native App Bridge (Capacitor iOS / Android)
+const isNativeApp = typeof window !== 'undefined' && (
+  window.Capacitor !== undefined ||
+  window.location.protocol === 'capacitor:' ||
+  window.location.origin.includes('capacitor://')
+);
+const API_BASE = isNativeApp ? 'https://nometro.pt' : '';
+
+// Native Haptic Feedback (Taptic Engine)
+function triggerHaptic(style = 'light') {
+  try {
+    if (window.Capacitor && window.Capacitor.isPluginAvailable('Haptics')) {
+      const { Haptics, ImpactStyle } = window.Capacitor.Plugins;
+      if (style === 'light') {
+        Haptics.impact({ style: ImpactStyle.Light });
+      } else if (style === 'medium') {
+        Haptics.impact({ style: ImpactStyle.Medium });
+      } else if (style === 'selection') {
+        Haptics.selectionChanged();
+      }
+    } else if (navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+  } catch (e) {}
+}
+
 const I18N = {
   pt: {
     searchPlaceholder: 'Pesquisar estação...',
@@ -24,7 +50,7 @@ const I18N = {
     minutes: 'min',
     prevStationDefault: 'Estação Anterior',
     tabMetro: 'Metro',
-    tabNetwork: 'Rede',
+    tabNetwork: 'Linhas',
     normalStatus: 'Normal',
     allLinesNormal: 'Circulação Normal',
     serviceAlert: 'Com Avisos',
@@ -70,7 +96,7 @@ const I18N = {
     minutes: 'min',
     prevStationDefault: 'Previous Station',
     tabMetro: 'Metro',
-    tabNetwork: 'Network',
+    tabNetwork: 'Lines',
     normalStatus: 'Normal',
     allLinesNormal: 'Normal Service',
     serviceAlert: 'Service Alerts',
@@ -265,9 +291,18 @@ function applyTheme(theme, isManual = false) {
     if (dom.themeIconMoon) dom.themeIconMoon.style.display = 'block';
     if (dom.themeIconSun) dom.themeIconSun.style.display = 'none';
   }
+
+  // Native iOS StatusBar update
+  try {
+    if (window.Capacitor && window.Capacitor.isPluginAvailable('StatusBar')) {
+      const { StatusBar, Style } = window.Capacitor.Plugins;
+      StatusBar.setStyle({ style: theme === 'light' ? Style.Light : Style.Dark });
+    }
+  } catch (e) {}
 }
 
 function toggleTheme() {
+  triggerHaptic('selection');
   const nextTheme = STATE.currentTheme === 'light' ? 'dark' : 'light';
   applyTheme(nextTheme, true);
 }
@@ -365,15 +400,20 @@ window.setMode = setMode;
 
 // View Switcher (Metro vs Rede)
 function switchView(viewName) {
+  triggerHaptic('selection');
   STATE.currentView = viewName;
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   if (viewName === 'network') {
+    document.body.classList.remove('view-metro-active');
+    document.body.classList.add('view-network-active');
     dom.viewNextTrain.style.display = 'none';
     dom.viewNetwork.style.display = 'block';
     dom.navBtns.forEach(b => b.classList.toggle('active', b.dataset.view === 'network'));
     renderSchematicTrack();
   } else {
+    document.body.classList.remove('view-network-active');
+    document.body.classList.add('view-metro-active');
     dom.viewNextTrain.style.display = 'block';
     dom.viewNetwork.style.display = 'none';
     dom.navBtns.forEach(b => b.classList.toggle('active', b.dataset.view === 'next-train'));
@@ -388,6 +428,13 @@ function hideSplashScreen() {
   setTimeout(() => {
     try { splash.remove(); } catch (e) {}
   }, 450);
+
+  // Native Capacitor Splash Hide
+  try {
+    if (window.Capacitor && window.Capacitor.isPluginAvailable('SplashScreen')) {
+      window.Capacitor.Plugins.SplashScreen.hide();
+    }
+  } catch (e) {}
 }
 
 // Initialize
@@ -396,6 +443,7 @@ async function init() {
   setupSystemThemeListener();
   applyTheme(STATE.currentTheme, false);
   applyLanguage(STATE.currentLang);
+  switchView(STATE.currentView || 'next-train');
   updateModeButtonUI();
 
   // Safety fallback in case network hangs
@@ -403,7 +451,7 @@ async function init() {
   const startTime = Date.now();
 
   try {
-    const stationsRes = await fetch('/api/estacoes').then(r => r.json());
+    const stationsRes = await fetch(`${API_BASE}/api/estacoes`).then(r => r.json());
     if (stationsRes.success) {
       STATE.stations = stationsRes.stations;
       STATE.lineOrders = stationsRes.lineOrders;
@@ -451,7 +499,7 @@ async function init() {
 // Fetch Lines Status
 async function fetchNetworkStatus() {
   try {
-    const res = await fetch('/api/status').then(r => r.json());
+    const res = await fetch(`${API_BASE}/api/status`).then(r => r.json());
     if (res.success && res.lines) {
       STATE.lineStatuses = res.lines;
       renderSchematicTrack();
@@ -583,7 +631,7 @@ async function fetchWaitTimes() {
   }
 
   try {
-    const res = await fetch(`/api/tempo-espera/${STATE.selectedStationId}`).then(r => r.json());
+    const res = await fetch(`${API_BASE}/api/tempo-espera/${STATE.selectedStationId}`).then(r => r.json());
     if (res.success && res.serviceStatus) {
       STATE.serviceStatus = res.serviceStatus;
       STATE.isServiceClosed = res.serviceStatus.isClosed;
@@ -1197,7 +1245,7 @@ function openStationSheet(stationId) {
   dom.stationDetailSheet.style.display = 'flex';
 
   // Fetch real telemetry for this sheet station
-  fetch(`/api/tempo-espera/${stationId}`)
+  fetch(`${API_BASE}/api/tempo-espera/${stationId}`)
     .then(r => r.json())
     .then(data => {
       if (!data || !data.success || !Array.isArray(data.trains)) return;
@@ -1240,6 +1288,7 @@ function closeStationSheet() {
 
 // Search & Select Station
 function selectStation(stationId) {
+  triggerHaptic('light');
   if (!STATE.stationsMap[stationId]) return;
   STATE.selectedStationId = stationId;
   STATE.selectedStationLineFilter = 'ALL';
@@ -1499,6 +1548,7 @@ function autoLocateOnStartup() {
 }
 
 function locateStation() {
+  triggerHaptic('medium');
   locateUserStation(true);
 }
 
@@ -1616,6 +1666,24 @@ function setupEventListeners() {
       extrapolateOfflineTrains();
     }
   });
+
+  // Keep safe area insets updated on rotation / viewport shifts
+  window.addEventListener('resize', updateSafeAreaInsets, { passive: true });
+  window.addEventListener('orientationchange', updateSafeAreaInsets, { passive: true });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+function updateSafeAreaInsets() {
+  try {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      const screenH = Math.max(window.screen.height, window.screen.width);
+      const safeTop = screenH >= 852 ? 54 : (screenH >= 812 ? 47 : 20);
+      document.documentElement.style.setProperty('--safe-area-top-fallback', safeTop + 'px');
+    }
+  } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateSafeAreaInsets();
+  init();
+});

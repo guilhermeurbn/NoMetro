@@ -125,10 +125,23 @@
           document.documentElement.removeAttribute('data-theme');
         }
       } catch(e) {}
+
+      // Calculate initial iOS Safe Area top to prevent notch clipping on initial load
+      try {
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+          var screenH = Math.max(window.screen.height, window.screen.width);
+          // iPhone 14/15/16 Pro & Pro Max (Dynamic Island): 54px - 59px
+          // iPhone X / 11 / 12 / 13 / 14 (Notch): 47px
+          // iPhone SE / 8: 20px
+          var safeTop = screenH >= 852 ? 54 : (screenH >= 812 ? 47 : 20);
+          document.documentElement.style.setProperty('--safe-area-top-fallback', safeTop + 'px');
+        }
+      } catch(e) {}
     })();
   </script>
 </head>
-<body>
+<body class="view-metro-active">
   <!-- App Splash / Loading Screen (Auto Adapts to Black or White System Theme) -->
   <div id="app-splash" class="app-splash-screen" aria-hidden="true">
     <div class="splash-content">
@@ -367,22 +380,39 @@
       </svg>
     </button>
 
-    <!-- Permanent Bottom Minimalist Navigation (Metro & Rede) -->
+    <!-- Permanent Bottom Minimalist Navigation (Metro & Linhas) -->
     <nav class="bottom-nav">
       <button class="nav-btn active" data-view="next-train">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        <svg class="metro-train-icon" viewBox="110 75 292 370" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="222" y="90" width="68" height="24" rx="12"/>
+          <rect x="142" y="118" width="228" height="216" rx="46"/>
+          <rect x="168" y="148" width="76" height="74" rx="14"/>
+          <rect x="268" y="148" width="76" height="74" rx="14"/>
+          <circle cx="186" cy="272" r="16"/>
+          <circle cx="326" cy="272" r="16"/>
+          <line x1="228" y1="258" x2="284" y2="258"/>
+          <line x1="228" y1="272" x2="284" y2="272"/>
+          <line x1="228" y1="286" x2="284" y2="286"/>
+          <line x1="172" y1="356" x2="340" y2="356"/>
+          <line x1="172" y1="356" x2="128" y2="428"/>
+          <line x1="340" y1="356" x2="384" y2="428"/>
+          <rect x="156" y="380" width="200" height="15" rx="5"/>
+          <line x1="138" y1="428" x2="374" y2="428"/>
         </svg>
         <span>Metro</span>
       </button>
       <button class="nav-btn" data-view="network">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M3 12h18M3 18h18"/>
-          <circle cx="7" cy="6" r="2" fill="currentColor"/>
-          <circle cx="17" cy="12" r="2" fill="currentColor"/>
-          <circle cx="11" cy="18" r="2" fill="currentColor"/>
+        <svg class="lines-multi-icon" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3.5" y1="5" x2="20.5" y2="5" stroke="#0084c9" stroke-width="2.5"/>
+          <line x1="3.5" y1="10" x2="20.5" y2="10" stroke="#ffbe00" stroke-width="2.5"/>
+          <line x1="3.5" y1="15" x2="20.5" y2="15" stroke="#00a650" stroke-width="2.5"/>
+          <line x1="3.5" y1="20" x2="20.5" y2="20" stroke="#e52329" stroke-width="2.5"/>
+          <circle cx="8" cy="5" r="1.7" fill="#ffffff" stroke="#0084c9" stroke-width="1.2"/>
+          <circle cx="15.5" cy="10" r="1.7" fill="#ffffff" stroke="#ffbe00" stroke-width="1.2"/>
+          <circle cx="10" cy="15" r="1.7" fill="#ffffff" stroke="#00a650" stroke-width="1.2"/>
+          <circle cx="17" cy="20" r="1.7" fill="#ffffff" stroke="#e52329" stroke-width="1.2"/>
         </svg>
-        <span>Rede</span>
+        <span>Linhas</span>
       </button>
     </nav>
 

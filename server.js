@@ -25,6 +25,11 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Privacy Policy Route (App Store compliance)
+app.get('/privacidade', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'privacidade.html'));
+});
+
 // In-memory cache store
 const cache = {
   status: { data: null, timestamp: 0, ttl: 15 * 1000 },

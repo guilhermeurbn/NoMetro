@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "cap:sync": "npx cap sync ios",
+    "cap:open": "npx cap open ios",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,6 +15,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.4",
     "express": "^5.2.1"
