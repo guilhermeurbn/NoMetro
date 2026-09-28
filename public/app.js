@@ -26,6 +26,7 @@ const I18N = {
     noStationFound: 'Nenhuma estação encontrada',
     frequency: 'Frequência ~4 min',
     activeStationTag: 'Ativa',
+    recentStations: 'Pesquisas Recentes',
     networkTitle: 'Rede do Metro',
     networkSubtitle: 'Linhas, paragens e correspondências',
     filterStationPlaceholder: 'Filtrar estação na linha...',
@@ -71,6 +72,7 @@ const I18N = {
     noStationFound: 'No station found',
     frequency: 'Frequency ~4 min',
     activeStationTag: 'Active',
+    recentStations: 'Recent Searches',
     networkTitle: 'Metro Network',
     networkSubtitle: 'Lines, stops and transfers',
     filterStationPlaceholder: 'Filter station in line...',
@@ -138,7 +140,7 @@ const STATE = {
     Verde: '#00a650',
     Vermelha: '#e52329'
   },
-  selectedStationId: 'MP', // Default: Marquês de Pombal
+  selectedStationId: (typeof localStorage !== 'undefined' && localStorage.getItem('nometro_last_station')) || 'MP',
   selectedTimelineLine: 'Azul',
   currentView: 'next-train',
   simulationMode: false,
@@ -365,7 +367,18 @@ async function init() {
       stationsRes.stations.forEach(s => {
         STATE.stationsMap[s.id] = s;
       });
+
+      // Restore last searched station if valid
+      try {
+        const lastStation = localStorage.getItem('nometro_last_station');
+        if (lastStation && STATE.stationsMap[lastStation]) {
+          STATE.selectedStationId = lastStation;
+        }
+      } catch (e) {}
     }
+
+    // Auto-request location permission on startup for instant exact nearest station
+    autoLocateOnStartup();
 
     await fetchNetworkStatus();
     await updateActiveStationUI();
@@ -1187,14 +1200,66 @@ function selectStation(stationId) {
   dom.stationSearch.value = '';
   dom.stationDropdown.style.display = 'none';
   dom.btnClearSearch.style.display = 'none';
+
+  // Save last station and update recent searches
+  try {
+    localStorage.setItem('nometro_last_station', stationId);
+    let recents = JSON.parse(localStorage.getItem('nometro_recent_stations') || '[]');
+    recents = recents.filter(id => id !== stationId);
+    recents.unshift(stationId);
+    if (recents.length > 5) recents = recents.slice(0, 5);
+    localStorage.setItem('nometro_recent_stations', JSON.stringify(recents));
+  } catch (e) {}
+
   updateActiveStationUI();
+}
+
+function showRecentStationsDropdown() {
+  if (dom.stationSearch.value.trim()) return;
+
+  let recents = [];
+  try {
+    recents = JSON.parse(localStorage.getItem('nometro_recent_stations') || '[]');
+  } catch (e) {}
+
+  const lastStation = localStorage.getItem('nometro_last_station');
+  if (recents.length === 0 && lastStation && STATE.stationsMap[lastStation]) {
+    recents = [lastStation];
+  }
+
+  const validStations = recents
+    .map(id => STATE.stationsMap[id])
+    .filter(Boolean);
+
+  if (validStations.length === 0) {
+    dom.stationDropdown.style.display = 'none';
+    return;
+  }
+
+  let html = `<div class="dropdown-header"><span>🕒</span> ${t('recentStations')}</div>`;
+  html += validStations.map(s => {
+    const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line]};"></span>`).join('');
+    return `
+      <div class="dropdown-item" data-id="${s.id}">
+        <span class="dropdown-station-name">${s.name}</span>
+        <div class="dropdown-line-dots">${dots}</div>
+      </div>
+    `;
+  }).join('');
+
+  dom.stationDropdown.innerHTML = html;
+  dom.stationDropdown.style.display = 'block';
+
+  dom.stationDropdown.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', () => selectStation(item.dataset.id));
+  });
 }
 
 function handleSearch(e) {
   const query = e.target.value.trim().toLowerCase();
   if (!query) {
-    dom.stationDropdown.style.display = 'none';
     dom.btnClearSearch.style.display = 'none';
+    showRecentStationsDropdown();
     return;
   }
 
@@ -1225,6 +1290,43 @@ function handleSearch(e) {
   dom.stationDropdown.querySelectorAll('.dropdown-item').forEach(item => {
     item.addEventListener('click', () => selectStation(item.dataset.id));
   });
+}
+
+// Automatically request user location on startup to show nearest station
+function autoLocateOnStartup() {
+  if (!navigator.geolocation) return;
+
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      STATE.userLocation = { lat, lon };
+
+      if (!STATE.stations || STATE.stations.length === 0) return;
+
+      let nearest = null;
+      let minDistance = Infinity;
+
+      STATE.stations.forEach(station => {
+        const d = calculateDistance(lat, lon, station.lat, station.lon);
+        if (d < minDistance) {
+          minDistance = d;
+          nearest = station;
+        }
+      });
+
+      // If user is within Lisbon Metropolitan Area (< 40km from closest station)
+      if (nearest && minDistance < 40000) {
+        selectStation(nearest.id);
+      } else {
+        updateActiveStationUI();
+      }
+    },
+    (err) => {
+      console.log('GPS startup notice:', err.message);
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+  );
 }
 
 // Locate Nearest Station (GPS)
@@ -1276,6 +1378,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // Event Listeners
 function setupEventListeners() {
   dom.stationSearch.addEventListener('input', handleSearch);
+  dom.stationSearch.addEventListener('focus', showRecentStationsDropdown);
+  dom.stationSearch.addEventListener('click', showRecentStationsDropdown);
   dom.btnClearSearch.addEventListener('click', () => {
     dom.stationSearch.value = '';
     dom.stationDropdown.style.display = 'none';
