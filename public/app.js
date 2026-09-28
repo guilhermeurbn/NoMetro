@@ -333,12 +333,26 @@ function switchView(viewName) {
   }
 }
 
+// Hide App Splash Screen with smooth fade
+function hideSplashScreen() {
+  const splash = document.getElementById('app-splash');
+  if (!splash || splash.classList.contains('splash-hidden')) return;
+  splash.classList.add('splash-hidden');
+  setTimeout(() => {
+    try { splash.remove(); } catch (e) {}
+  }, 450);
+}
+
 // Initialize
 async function init() {
   setupEventListeners();
   applyTheme(STATE.currentTheme);
   applyLanguage(STATE.currentLang);
   updateModeButtonUI();
+
+  // Safety fallback in case network hangs
+  const safetyTimeout = setTimeout(hideSplashScreen, 3000);
+  const startTime = Date.now();
 
   try {
     const stationsRes = await fetch('/api/estacoes').then(r => r.json());
@@ -358,6 +372,11 @@ async function init() {
     renderSchematicTrack();
   } catch (err) {
     console.error('Init error:', err);
+  } finally {
+    clearTimeout(safetyTimeout);
+    const elapsed = Date.now() - startTime;
+    const remainingDelay = Math.max(0, 350 - elapsed);
+    setTimeout(hideSplashScreen, remainingDelay);
   }
 
   setInterval(tickTrains, 1000);
