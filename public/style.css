@@ -106,66 +106,33 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: 6px;
   cursor: default;
   user-select: none;
 }
 
-.brand h1 {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+.brand-full-logo {
+  height: 38px;
+  width: auto;
+  display: block;
   color: var(--text-primary);
-  line-height: 1;
-}
-
-/* Color Palette Capsule - Premium Integrated Designer Badge (Static visual mark) */
-.metro-palette-capsule {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  padding: 4px 7px;
-  border-radius: var(--radius-pill);
-  cursor: default;
-  pointer-events: none;
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-[data-theme="light"] .metro-palette-capsule {
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 
-    0 2px 6px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
-.palette-pill {
-  width: 7.5px;
-  height: 7.5px;
-  border-radius: 50%;
-  display: inline-block;
-  box-shadow: 
-    0 1px 2px rgba(0, 0, 0, 0.35),
-    inset 0 1px 1px rgba(255, 255, 255, 0.45);
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.metro-palette-capsule:hover .palette-pill,
-.metro-palette-capsule:active .palette-pill {
-  transform: scale(1.15);
+.brand-full-logo:hover {
+  transform: scale(1.03);
 }
 
-.palette-pill.azul { background: var(--c-azul); }
-.palette-pill.amarela { background: var(--c-amarela); }
-.palette-pill.verde { background: var(--c-verde); }
-.palette-pill.vermelha { background: var(--c-vermelha); }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
 
 /* Header Round Action Buttons */
 .header-actions {
@@ -1496,16 +1463,6 @@ body.service-closed .active-station-hero {
   overflow: hidden;
 }
 
-.service-closed-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 25%;
-  right: 25%;
-  height: 1.5px;
-  background: linear-gradient(90deg, transparent, rgba(255, 159, 10, 0.45), transparent);
-  opacity: 0.85;
-}
 
 .closed-card-title {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
@@ -1586,9 +1543,6 @@ body.service-closed .active-station-hero {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-[data-theme="light"] .service-closed-card::before {
-  background: linear-gradient(90deg, transparent, rgba(255, 149, 0, 0.35), transparent);
-}
 
 [data-theme="light"] .closed-countdown-value .seconds-unit {
   color: rgba(0, 0, 0, 0.4);

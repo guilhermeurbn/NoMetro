@@ -101,13 +101,37 @@
     <!-- Minimalist Header -->
     <header class="app-header">
       <div class="brand">
-        <h1>NoMetro</h1>
-        <div class="metro-palette-capsule" aria-hidden="true">
-          <span class="palette-pill azul"></span>
-          <span class="palette-pill amarela"></span>
-          <span class="palette-pill verde"></span>
-          <span class="palette-pill vermelha"></span>
-        </div>
+        <h1 class="sr-only">NoMetro</h1>
+        <svg class="brand-full-logo" viewBox="0 0 148 44" fill="none" role="img" aria-label="NoMetro Logo">
+          <!-- SÍMBOLO: Metro Puro em Traço Vetorial (Sem caixinha/fundo cinzento) -->
+          <g transform="translate(-11.5, -7) scale(0.115)" stroke="currentColor" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="222" y="90" width="68" height="24" rx="12" fill="none"/>
+            <rect x="142" y="118" width="228" height="216" rx="46" fill="none"/>
+            <rect x="168" y="148" width="76" height="74" rx="14" fill="none"/>
+            <rect x="268" y="148" width="76" height="74" rx="14" fill="none"/>
+            <circle cx="186" cy="272" r="16" fill="none"/>
+            <circle cx="326" cy="272" r="16" fill="none"/>
+            <line x1="228" y1="258" x2="284" y2="258"/>
+            <line x1="228" y1="272" x2="284" y2="272"/>
+            <line x1="228" y1="286" x2="284" y2="286"/>
+            <line x1="172" y1="356" x2="340" y2="356"/>
+            <line x1="172" y1="356" x2="128" y2="428"/>
+            <line x1="340" y1="356" x2="384" y2="428"/>
+            <rect x="156" y="380" width="200" height="15" rx="5" fill="none"/>
+            <line x1="138" y1="428" x2="374" y2="428"/>
+          </g>
+
+          <!-- TEXTO: NoMetro (Usa currentColor para adaptação pura em claro e escuro) -->
+          <text x="42" y="28.5" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="800" letter-spacing="-0.9" fill="currentColor">NoMetro</text>
+
+          <!-- CARRIS DAS 4 CORES DE LISBOA (Exatamente embaixo da palavra 'Metro', de 'M' a 'o') -->
+          <g transform="translate(72, 34)">
+            <rect x="0" y="0" width="14.5" height="2.8" rx="1.4" fill="#0084c9"/>
+            <rect x="16.5" y="0" width="14.5" height="2.8" rx="1.4" fill="#ffbe00"/>
+            <rect x="33" y="0" width="14.5" height="2.8" rx="1.4" fill="#00a650"/>
+            <rect x="49.5" y="0" width="14.5" height="2.8" rx="1.4" fill="#e52329"/>
+          </g>
+        </svg>
       </div>
 
       <div class="header-actions">
@@ -215,7 +239,7 @@
               <span class="banner-line-tag" id="banner-line-tag">Linha Azul</span>
               <h3 class="banner-terminals" id="banner-terminals">Reboleira ↔ Santa Apolónia</h3>
             </div>
-            <span class="banner-status-pill ok" id="banner-status-pill">Normal</span>
+            <span class="banner-status-pill ok" id="banner-status-pill" style="display: none;"></span>
           </div>
 
           <div class="line-banner-chips" id="line-banner-chips">

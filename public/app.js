@@ -895,7 +895,13 @@ function renderSchematicTrack() {
   const terminals = STATE.lineTerminals[lineName] || { dir1: 'Term. 1', dir2: 'Term. 2' };
   const rawStationIds = STATE.lineOrders[lineName] || [];
   const statusData = STATE.lineStatuses ? STATE.lineStatuses[lineName] : null;
-  const isOk = !statusData || (statusData.status === 'normal' || statusData.message === 'Ok');
+  const msgTrimmed = (statusData?.message || '').trim().toLowerCase();
+  const statusTrimmed = (statusData?.status || '').trim().toLowerCase();
+  const isNormalOrOk = !statusData || 
+    statusTrimmed === 'normal' || 
+    msgTrimmed === 'ok' || 
+    msgTrimmed === 'normal' || 
+    (statusTrimmed === 'encerrada' && (msgTrimmed === 'ok' || !msgTrimmed));
 
   // Update tabs active state
   dom.networkLineTabs.forEach(tab => {
@@ -907,9 +913,13 @@ function renderSchematicTrack() {
   if (STATE.lineStatuses) {
     for (const l in STATE.lineStatuses) {
       const st = STATE.lineStatuses[l];
-      if (st && st.status !== 'normal' && st.message !== 'Ok') {
-        allLinesOk = false;
-        break;
+      if (st) {
+        const m = (st.message || '').trim().toLowerCase();
+        const s = (st.status || '').trim().toLowerCase();
+        if (s !== 'normal' && m !== 'ok' && m !== 'normal' && !(s === 'encerrada' && (m === 'ok' || !m))) {
+          allLinesOk = false;
+          break;
+        }
       }
     }
   }
@@ -929,8 +939,13 @@ function renderSchematicTrack() {
     dom.bannerTerminals.textContent = `${terminals.dir1} ↔ ${terminals.dir2}`;
   }
   if (dom.bannerStatusPill) {
-    dom.bannerStatusPill.className = `banner-status-pill ${isOk ? 'ok' : 'perturbed'}`;
-    dom.bannerStatusPill.textContent = isOk ? t('normalStatus') : (statusData?.message || 'Aviso');
+    if (isNormalOrOk) {
+      dom.bannerStatusPill.style.display = 'none';
+    } else {
+      dom.bannerStatusPill.style.display = 'inline-flex';
+      dom.bannerStatusPill.className = 'banner-status-pill perturbed';
+      dom.bannerStatusPill.textContent = statusData?.message?.trim() || 'Aviso';
+    }
   }
 
   if (dom.chipStops) dom.chipStops.textContent = `${rawStationIds.length} ${t('stops')}`;
@@ -955,11 +970,6 @@ function renderSchematicTrack() {
     });
   }
 
-  // Simulated train positions on the line for dynamic liveliness
-  const timeStep = Math.floor(Date.now() / 20000);
-  const trainIndex1 = timeStep % Math.max(1, rawStationIds.length);
-  const trainStationId1 = rawStationIds[trainIndex1];
-
   // Update vertical track container
   if (dom.schematicTrackContainer) {
     dom.schematicTrackContainer.style.setProperty('--banner-color', lineColor);
@@ -978,7 +988,6 @@ function renderSchematicTrack() {
       if (!station) return '';
       const isSelected = (id === STATE.selectedStationId);
       const isTerminal = (id === rawStationIds[0] || id === rawStationIds[rawStationIds.length - 1]);
-      const hasTrain = (id === trainStationId1 || (isSelected && STATE.currentView === 'network'));
 
       // Metro connecting lines badges
       const metroBadges = station.lines
@@ -999,10 +1008,6 @@ function renderSchematicTrack() {
         distBadge = `<span class="station-subtitle-gps">${d < 1000 ? Math.round(d) + 'm' : (d/1000).toFixed(1) + 'km'}</span>`;
       }
 
-      const trainBadgeHtml = hasTrain 
-        ? `<div class="schematic-train-badge"><span class="train-pulse-dot"></span>~2 min</div>`
-        : '';
-
       return `
         <div class="schematic-station-row ${isSelected ? 'current-active' : ''} ${isTerminal ? 'terminal-station' : ''}" data-id="${id}">
           <div class="station-node-dot"></div>
@@ -1012,8 +1017,6 @@ function renderSchematicTrack() {
               ${distBadge}
             </div>
             <div class="station-transfer-badges">
-              ${isSelected ? `<span class="dist-pill" style="font-size: 0.65rem; padding: 2px 7px;">${t('activeStationTag')}</span>` : ''}
-              ${trainBadgeHtml}
               ${metroBadges}
               ${hubBadge}
             </div>

@@ -8,10 +8,10 @@
     <!-- Indicador do Topo -->
     <rect x="222" y="90" width="68" height="24" rx="12" fill="none"/>
 
-    <!-- Carruagem Principal -->
+    <!-- Carruagem Principal (Cantos suaves bem definidos) -->
     <rect x="142" y="118" width="228" height="216" rx="46" fill="none"/>
 
-    <!-- Janelas / Para-brisas com separação central -->
+    <!-- Janelas / Para-brisas (Separadas no meio com espaço generoso) -->
     <rect x="168" y="148" width="76" height="74" rx="14" fill="none"/>
     <rect x="268" y="148" width="76" height="74" rx="14" fill="none"/>
 
@@ -25,7 +25,10 @@
     <line x1="228" y1="286" x2="284" y2="286" />
 
     <!-- Carris / Linha Férrea com separação do corpo -->
+    <!-- Base Superior -->
     <line x1="172" y1="356" x2="340" y2="356" />
+
+    <!-- Trilhos em Perspetiva Diagonal -->
     <line x1="172" y1="356" x2="128" y2="428" />
     <line x1="340" y1="356" x2="384" y2="428" />
 

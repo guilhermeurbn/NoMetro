@@ -1,10 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <!-- Fundo Apple Dark Squircle -->
-  <rect width="512" height="512" rx="128" fill="#121316"/>
-  <rect width="512" height="512" rx="128" stroke="rgba(255, 255, 255, 0.08)" stroke-width="2"/>
-
-  <!-- Estrutura do Metro em Traços Finos e Refinados (stroke-width: 9.5) -->
-  <g stroke="#ffffff" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Ícone Metro Minimalista em Traços Finos e Separados (Fundo Transparente) -->
+  <g stroke="currentColor" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round">
     <!-- Indicador do Topo -->
     <rect x="222" y="90" width="68" height="24" rx="12" fill="none"/>
 
@@ -24,12 +20,12 @@
     <line x1="228" y1="272" x2="284" y2="272" />
     <line x1="228" y1="286" x2="284" y2="286" />
 
-    <!-- Carris / Linha Férrea com separação do corpo -->
+    <!-- Carris / Linha Férrea com espaçamento claro -->
     <line x1="172" y1="356" x2="340" y2="356" />
     <line x1="172" y1="356" x2="128" y2="428" />
     <line x1="340" y1="356" x2="384" y2="428" />
 
-    <!-- Travessa Intermédia com separação -->
+    <!-- Travessa Intermédia Enquadrada -->
     <rect x="156" y="380" width="200" height="15" rx="5" fill="none"/>
 
     <!-- Travessa Inferior -->
