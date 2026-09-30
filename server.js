@@ -23,10 +23,22 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: '1d',
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      // HTML não deve ficar em cache longo para garantir atualizações imediatas do app
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    } else {
+      // JS, CSS, imagens, webmanifest e SVGs cacheados por 1 dia (e utilizáveis enquanto revalida em 7 dias)
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    }
+  }
+}));
 
 // Privacy Policy Route (App Store compliance)
 app.get('/privacidade', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=3600');
   res.sendFile(path.join(__dirname, 'public', 'privacidade.html'));
 });
 
@@ -160,15 +172,30 @@ function fetchMetroApi(endpoint) {
   });
 }
 
+// In-flight request deduplication map (prevents cache stampede / thundering herd)
+const inflightRequests = new Map();
+
+function fetchMetroApiDeduped(endpoint) {
+  if (inflightRequests.has(endpoint)) {
+    return inflightRequests.get(endpoint);
+  }
+  const promise = fetchMetroApi(endpoint).finally(() => {
+    inflightRequests.delete(endpoint);
+  });
+  inflightRequests.set(endpoint, promise);
+  return promise;
+}
+
 // 1. Line Status endpoint (/api/status)
 app.get('/api/status', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=5');
   const now = Date.now();
   if (cache.status.data && (now - cache.status.timestamp < cache.status.ttl)) {
     return res.json({ ...cache.status.data, cached: true });
   }
 
   try {
-    const apiRes = await fetchMetroApi('/estadoLinha/todos');
+    const apiRes = await fetchMetroApiDeduped('/estadoLinha/todos');
     if (apiRes && apiRes.resposta) {
       const data = {
         success: true,
@@ -226,13 +253,14 @@ app.get('/api/status', async (req, res) => {
 
 // 2. Stations metadata endpoint (/api/estacoes)
 app.get('/api/estacoes', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
   const now = Date.now();
   if (cache.stations.data && (now - cache.stations.timestamp < cache.stations.ttl)) {
     return res.json(cache.stations.data);
   }
 
   try {
-    const apiRes = await fetchMetroApi('/infoEstacao/todos');
+    const apiRes = await fetchMetroApiDeduped('/infoEstacao/todos');
     if (apiRes && Array.isArray(apiRes.resposta)) {
       const stations = apiRes.resposta.map(s => {
         // Parse "[Verde, Vermelha]" -> ["Verde", "Vermelha"]
@@ -319,6 +347,7 @@ function getLisbonServiceStatus() {
 
 // 3. Real-time wait times endpoint (/api/tempo-espera)
 app.get('/api/tempo-espera', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=5');
   const serviceStatus = getLisbonServiceStatus();
   const now = Date.now();
 
@@ -336,7 +365,7 @@ app.get('/api/tempo-espera', async (req, res) => {
   }
 
   try {
-    const apiRes = await fetchMetroApi('/tempoEspera/Estacao/todos');
+    const apiRes = await fetchMetroApiDeduped('/tempoEspera/Estacao/todos');
     const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
     const liveData = enrichTrainData(rawList);
 
@@ -363,6 +392,7 @@ app.get('/api/tempo-espera', async (req, res) => {
 
 // 4. Station specific wait times (/api/tempo-espera/:id)
 app.get('/api/tempo-espera/:id', async (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=5');
   const stationId = req.params.id.toUpperCase();
   const serviceStatus = getLisbonServiceStatus();
 
@@ -393,7 +423,7 @@ app.get('/api/tempo-espera/:id', async (req, res) => {
   }
 
   try {
-    const apiRes = await fetchMetroApi(`/tempoEspera/Estacao/${stationId}`);
+    const apiRes = await fetchMetroApiDeduped(`/tempoEspera/Estacao/${stationId}`);
     const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
     const trains = enrichTrainData(rawList);
 
