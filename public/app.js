@@ -10,8 +10,8 @@ if (typeof location !== 'undefined' && location.protocol === 'http:' && location
 // Native App Bridge (Capacitor iOS / Android)
 const isNativeApp = typeof window !== 'undefined' && (
   window.Capacitor !== undefined ||
-  window.location.protocol === 'capacitor:' ||
-  window.location.origin.includes('capacitor://')
+  window.location?.protocol === 'capacitor:' ||
+  Boolean(window.location?.origin && window.location.origin.includes('capacitor://'))
 );
 const API_BASE = isNativeApp ? 'https://nometro.pt' : '';
 
@@ -902,7 +902,7 @@ function renderTrainCards() {
 
   station.lines.forEach(lineName => {
     // Multi-line filter: show only active line if station has multiple lines
-    if (station.lines.length > 1 && STATE.selectedStationLineFilter && STATE.selectedStationLineFilter !== lineName) {
+    if (station.lines.length > 1 && STATE.selectedStationLineFilter && STATE.selectedStationLineFilter !== 'ALL' && STATE.selectedStationLineFilter !== lineName) {
       return;
     }
 
