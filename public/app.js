@@ -446,8 +446,32 @@ async function init() {
   switchView(STATE.currentView || 'next-train');
   updateModeButtonUI();
 
+  // Instant local cache hydration for zero-delay startup (0ms)
+  try {
+    const cachedMeta = localStorage.getItem('nometro_cached_stations_v2');
+    if (cachedMeta) {
+      const data = JSON.parse(cachedMeta);
+      if (data && Array.isArray(data.stations)) {
+        STATE.stations = data.stations;
+        STATE.lineOrders = data.lineOrders;
+        STATE.lineTerminals = data.lineTerminals;
+        if (data.colors) STATE.colors = data.colors;
+        data.stations.forEach(s => { STATE.stationsMap[s.id] = s; });
+
+        const lastStation = localStorage.getItem('nometro_last_station');
+        if (lastStation && STATE.stationsMap[lastStation]) {
+          STATE.selectedStationId = lastStation;
+        }
+
+        // Draw immediately without waiting for network!
+        updateActiveStationUI();
+        renderSchematicTrack();
+      }
+    }
+  } catch (e) {}
+
   // Safety fallback in case network hangs
-  const safetyTimeout = setTimeout(hideSplashScreen, 3000);
+  const safetyTimeout = setTimeout(hideSplashScreen, 2500);
   const startTime = Date.now();
 
   try {
@@ -461,6 +485,10 @@ async function init() {
       stationsRes.stations.forEach(s => {
         STATE.stationsMap[s.id] = s;
       });
+
+      try {
+        localStorage.setItem('nometro_cached_stations_v2', JSON.stringify(stationsRes));
+      } catch (e) {}
 
       // Restore last searched station if valid
       try {
@@ -617,8 +645,26 @@ async function updateActiveStationUI() {
   updateNetworkWaitingUI();
   renderStationLineFilter();
 
-  await fetchWaitTimes();
+  // Instant local cache restore for this station (0ms response time)
+  try {
+    const cachedStation = localStorage.getItem(`nometro_trains_${STATE.selectedStationId}`);
+    if (cachedStation) {
+      const parsed = JSON.parse(cachedStation);
+      if (parsed && Array.isArray(parsed.trains) && parsed.trains.length > 0) {
+        parseRealTrains(parsed.trains);
+      }
+    }
+  } catch (e) {}
+
+  // 1. Render immediately with available or estimated trains (Zero delay)
   renderTrainCards();
+
+  // 2. Fetch fresh telemetry in background and update smoothly
+  fetchWaitTimes().then(() => {
+    if (STATE.currentView === 'home' || STATE.currentView === 'next-train') {
+      renderTrainCards();
+    }
+  });
 }
 
 async function fetchWaitTimes() {
@@ -632,7 +678,7 @@ async function fetchWaitTimes() {
 
   try {
     const res = await fetch(`${API_BASE}/api/tempo-espera/${STATE.selectedStationId}`).then(r => r.json());
-    if (res.success && res.serviceStatus) {
+    if (res && res.success && res.serviceStatus) {
       STATE.serviceStatus = res.serviceStatus;
       STATE.isServiceClosed = res.serviceStatus.isClosed;
       STATE.isWaitingForNetwork = false;
@@ -644,7 +690,17 @@ async function fetchWaitTimes() {
 
       if (!STATE.isServiceClosed && Array.isArray(res.trains) && res.trains.length > 0) {
         parseRealTrains(res.trains);
+        try {
+          localStorage.setItem(`nometro_trains_${STATE.selectedStationId}`, JSON.stringify({
+            trains: res.trains,
+            timestamp: Date.now()
+          }));
+        } catch (e) {}
       } else if (!STATE.isServiceClosed) {
+        setupSimulatedTrains();
+      }
+    } else {
+      if (!STATE.isServiceClosed && (!STATE.simulatedTrains || Object.keys(STATE.simulatedTrains).length === 0)) {
         setupSimulatedTrains();
       }
     }
@@ -887,7 +943,16 @@ function renderTrainCards() {
 
 function renderCard({ lineName, lineColor, dirKey, destination, targetName, prevName }) {
   const key = `${STATE.selectedStationId}-${lineName}-${dirKey}`;
-  const train = STATE.simulatedTrains[key] || { secondsLeft: 120, initialSeconds: 240, subsequentMinutes: 5, isAffected: false };
+  if (!STATE.simulatedTrains[key]) {
+    STATE.simulatedTrains[key] = {
+      secondsLeft: 120,
+      targetArrivalTime: Date.now() + 120000,
+      initialSeconds: 240,
+      subsequentMinutes: 5,
+      isAffected: false
+    };
+  }
+  const train = STATE.simulatedTrains[key];
 
   const isLineDisrupted = STATE.lineStatuses && STATE.lineStatuses[lineName] && 
     (STATE.lineStatuses[lineName].status !== 'normal' || (STATE.lineStatuses[lineName].code && STATE.lineStatuses[lineName].code !== '0'));
@@ -1586,9 +1651,11 @@ function setupEventListeners() {
   
   dom.btnRefresh.addEventListener('click', async () => {
     dom.btnRefresh.classList.add('refreshing');
+    triggerHaptic('light');
     await fetchNetworkStatus();
     await fetchWaitTimes();
     renderSchematicTrack();
+    renderTrainCards();
     setTimeout(() => dom.btnRefresh.classList.remove('refreshing'), 600);
   });
 

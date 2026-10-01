@@ -345,11 +345,52 @@ function getLisbonServiceStatus() {
   };
 }
 
+// Helper to retrieve wait times with memory caching and stale fallback
+async function getGlobalWaitTimes() {
+  const now = Date.now();
+  // Se o cache tiver menos de 12 segundos, usa direto da memória
+  if (cache.waitTimes.data && (now - cache.waitTimes.timestamp < 12000)) {
+    return cache.waitTimes.data;
+  }
+
+  try {
+    const apiRes = await fetchMetroApiDeduped('/tempoEspera/Estacao/todos');
+    const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
+    if (rawList.length > 0) {
+      const liveData = enrichTrainData(rawList);
+      cache.waitTimes = {
+        data: liveData,
+        timestamp: now,
+        ttl: 12000
+      };
+      return liveData;
+    }
+  } catch (err) {
+    console.error('Error fetching global wait times:', err.message);
+  }
+
+  // Fallback: se a API falhar ou der timeout, retorna o último dado válido em cache
+  if (cache.waitTimes.data) {
+    return cache.waitTimes.data;
+  }
+
+  return [];
+}
+
+// Pre-warm wait times cache every 12s when metro service is running
+setInterval(async () => {
+  const status = getLisbonServiceStatus();
+  if (!status.isClosed) {
+    try {
+      await getGlobalWaitTimes();
+    } catch (e) {}
+  }
+}, 12000);
+
 // 3. Real-time wait times endpoint (/api/tempo-espera)
 app.get('/api/tempo-espera', async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=5');
   const serviceStatus = getLisbonServiceStatus();
-  const now = Date.now();
 
   if (serviceStatus.isClosed) {
     return res.json({
@@ -360,34 +401,14 @@ app.get('/api/tempo-espera', async (req, res) => {
     });
   }
 
-  if (cache.waitTimes.data && (now - cache.waitTimes.timestamp < cache.waitTimes.ttl)) {
-    return res.json({ ...cache.waitTimes.data, serviceStatus, cached: true });
-  }
-
-  try {
-    const apiRes = await fetchMetroApiDeduped('/tempoEspera/Estacao/todos');
-    const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
-    const liveData = enrichTrainData(rawList);
-
-    const data = {
-      success: true,
-      serviceStatus,
-      trains: liveData,
-      timestamp: new Date().toISOString()
-    };
-
-    cache.waitTimes = { data, timestamp: now, ttl: 10000 };
-    return res.json(data);
-  } catch (err) {
-    console.error('Error fetching wait times:', err.message);
-    return res.json({
-      success: true,
-      serviceStatus,
-      trains: [],
-      error: 'Instabilidade temporária na telemetria',
-      timestamp: new Date().toISOString()
-    });
-  }
+  const trains = await getGlobalWaitTimes();
+  return res.json({
+    success: true,
+    serviceStatus,
+    trains,
+    cached: true,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // 4. Station specific wait times (/api/tempo-espera/:id)
@@ -406,37 +427,30 @@ app.get('/api/tempo-espera/:id', async (req, res) => {
     });
   }
 
-  // Fast response from global cache if recent
-  const now = Date.now();
-  if (cache.waitTimes.data && (now - cache.waitTimes.timestamp < cache.waitTimes.ttl)) {
-    const cachedStationTrains = cache.waitTimes.data.trains.filter(t => t.stop_id === stationId);
-    if (cachedStationTrains.length > 0) {
-      return res.json({
-        success: true,
-        stationId,
-        serviceStatus,
-        trains: cachedStationTrains,
-        timestamp: cache.waitTimes.data.timestamp,
-        cached: true
-      });
+  // Fast response from pre-warmed global cache (always < 3ms)
+  const allTrains = await getGlobalWaitTimes();
+  let stationTrains = allTrains.filter(t => t.stop_id === stationId);
+
+  // Fallback if specific station wasn't returned in global batch
+  if (stationTrains.length === 0) {
+    try {
+      const apiRes = await fetchMetroApiDeduped(`/tempoEspera/Estacao/${stationId}`);
+      const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
+      if (rawList.length > 0) {
+        stationTrains = enrichTrainData(rawList);
+      }
+    } catch (err) {
+      console.warn(`Station ${stationId} single fetch fallback failed:`, err.message);
     }
   }
 
-  try {
-    const apiRes = await fetchMetroApiDeduped(`/tempoEspera/Estacao/${stationId}`);
-    const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
-    const trains = enrichTrainData(rawList);
-
-    return res.json({
-      success: true,
-      stationId,
-      serviceStatus,
-      trains,
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message, serviceStatus });
-  }
+  return res.json({
+    success: true,
+    stationId,
+    serviceStatus,
+    trains: stationTrains,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start server on all network interfaces
