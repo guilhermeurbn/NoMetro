@@ -967,7 +967,7 @@ function renderCard({ lineName, lineColor, dirKey, destination, targetName, prev
   let timeStr = '';
   let isArriving = false;
 
-  if (train.secondsLeft <= 12) {
+  if (train.secondsLeft <= 30) {
     timeStr = t('arriving');
     isArriving = true;
   } else if (minutes === 0) {
@@ -982,7 +982,7 @@ function renderCard({ lineName, lineColor, dirKey, destination, targetName, prev
 
   const paragensText = isAffected
     ? t('delayedStatusText')
-    : (train.secondsLeft <= 15 
+    : (train.secondsLeft <= 30 
         ? t('atStation') 
         : (minutes === 0 ? t('approaching') : (minutes === 1 ? t('stop1') : `${minutes} ${t('stops')}`)));
 
@@ -1086,7 +1086,7 @@ function tickTrains() {
         valEl.textContent = `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
         valEl.className = 'big-countdown delayed';
         if (statusEl) statusEl.textContent = t('delayedStatusText');
-      } else if (train.secondsLeft <= 12) {
+      } else if (train.secondsLeft <= 30) {
         valEl.textContent = t('arriving');
         valEl.className = 'big-countdown arriving';
         if (statusEl) statusEl.textContent = t('atStation');
@@ -1333,7 +1333,7 @@ function openStationSheet(stationId) {
             if (!isNaN(sec) && sec >= 0) {
               const m = Math.floor(sec / 60);
               const s = sec % 60;
-              timeEl.textContent = sec <= 12 ? t('arriving') : (m > 0 ? `${m}m ${s < 10 ? '0' : ''}${s}s` : `${s}s`);
+              timeEl.textContent = sec <= 30 ? t('arriving') : (m > 0 ? `${m}m ${s < 10 ? '0' : ''}${s}s` : `${s}s`);
               return;
             }
           }
