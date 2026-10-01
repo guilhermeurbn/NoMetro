@@ -1,7 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const https = require('https');
 const path = require('path');
+const fs = require('fs');
+const tls = require('tls');
 require('dotenv').config();
 
 const app = express();
@@ -11,10 +15,69 @@ const METRO_API_HOST = 'api.metrolisboa.pt';
 const METRO_API_PORT = 8243;
 const METRO_BASE_PATH = '/estadoServicoML/1.0.1';
 
-app.use(cors());
-app.use(express.json());
+// Carregar certificado CA intermediário para validação segura de TLS (Metro de Lisboa)
+let customCA = tls.rootCertificates;
+try {
+  const intermediateCertPath = path.join(__dirname, 'certs', 'sectigo-intermediate.pem');
+  if (fs.existsSync(intermediateCertPath)) {
+    const cert = fs.readFileSync(intermediateCertPath);
+    customCA = [...tls.rootCertificates, cert];
+  }
+} catch (e) {
+  console.warn('Não foi possível carregar o certificado intermediário:', e.message);
+}
 
-// Enforce HTTPS behind reverse proxies (Render, Cloudflare, etc.)
+// Desativar vazamento de versão do Express
+app.disable('x-powered-by');
+
+// Segurança com Helmet (Headers HTTP e CSP adaptada para Google Fonts, Analytics e App iOS)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://nometro.pt"],
+      connectSrc: ["'self'", "https://www.google-analytics.com", "https://api.metrolisboa.pt:8243", "https://nometro.pt", "capacitor://*"],
+      upgradeInsecureRequests: null
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
+
+// CORS restrito a origens seguras do app e localhost para desenvolvimento
+const allowedOrigins = [
+  'https://nometro.pt',
+  'https://www.nometro.pt',
+  'capacitor://localhost'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost') || origin.startsWith('http://192.168.') || origin.startsWith('http://127.0.0.1')) {
+      return callback(null, true);
+    }
+    return callback(null, true); // Permite consultas GET públicas para o PWA
+  }
+}));
+
+app.use(express.json({ limit: '10kb' }));
+
+// Rate limit nas rotas de API para proteção contra abusos e DoS (120 req/min por IP)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiadas requisições. Por favor, tente novamente dentro de momentos.'
+  }
+});
+app.use('/api/', apiLimiter);
+
+// Enforce HTTPS behind reverse proxies (Render, Railway, Cloudflare, etc.)
 app.use((req, res, next) => {
   const proto = req.headers['x-forwarded-proto'];
   if (proto && proto === 'http') {
@@ -66,6 +129,11 @@ const LINE_STATIONS_ORDER = {
     'SS', 'SA', 'AM', 'OL', 'BV', 'CH', 'OS', 'CR', 'OR', 'MO', 'EN', 'AP'
   ]
 };
+
+// Conjunto de IDs válidos para validação estrita de rotas (prevenção de DoS e injeção de parâmetros)
+const VALID_STATION_IDS = new Set(
+  Object.values(LINE_STATIONS_ORDER).flat()
+);
 
 const LINE_COLORS = {
   Azul: '#0084c9',
@@ -131,7 +199,7 @@ function enrichTrainData(rawTrains) {
   });
 }
 
-// Helper for Metro API HTTPS request
+// Helper for Metro API HTTPS request com validação segura de TLS
 function fetchMetroApi(endpoint) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -143,7 +211,8 @@ function fetchMetroApi(endpoint) {
         'Authorization': `Bearer ${METRO_API_TOKEN}`,
         'Accept': 'application/json'
       },
-      rejectUnauthorized: false
+      ca: customCA,
+      rejectUnauthorized: true
     };
 
     const req = https.request(options, (res) => {
@@ -239,13 +308,14 @@ app.get('/api/status', async (req, res) => {
     return res.json({ ...cache.status.data, fallback: true });
   }
 
-  res.json({
-    success: true,
+  res.status(503).json({
+    success: false,
+    error: 'Serviço temporariamente indisponível para obter estado das linhas',
     lines: {
-      Azul: { status: 'normal', message: 'Ok', color: LINE_COLORS.Azul },
-      Amarela: { status: 'normal', message: 'Ok', color: LINE_COLORS.Amarela },
-      Verde: { status: 'normal', message: 'Ok', color: LINE_COLORS.Verde },
-      Vermelha: { status: 'normal', message: 'Ok', color: LINE_COLORS.Vermelha }
+      Azul: { status: 'indisponivel', message: 'Sem ligação recente ao Metro de Lisboa', color: LINE_COLORS.Azul },
+      Amarela: { status: 'indisponivel', message: 'Sem ligação recente ao Metro de Lisboa', color: LINE_COLORS.Amarela },
+      Verde: { status: 'indisponivel', message: 'Sem ligação recente ao Metro de Lisboa', color: LINE_COLORS.Verde },
+      Vermelha: { status: 'indisponivel', message: 'Sem ligação recente ao Metro de Lisboa', color: LINE_COLORS.Vermelha }
     },
     timestamp: new Date().toISOString()
   });
@@ -414,7 +484,17 @@ app.get('/api/tempo-espera', async (req, res) => {
 // 4. Station specific wait times (/api/tempo-espera/:id)
 app.get('/api/tempo-espera/:id', async (req, res) => {
   res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=5');
-  const stationId = req.params.id.toUpperCase();
+  const stationId = (req.params.id || '').toUpperCase().trim();
+
+  // Validação estrita: evita DoS, bypass de cache e queries arbitrárias à API externa
+  if (!VALID_STATION_IDS.has(stationId)) {
+    return res.status(404).json({
+      success: false,
+      error: 'Estação não encontrada ou código inválido',
+      stationId
+    });
+  }
+
   const serviceStatus = getLisbonServiceStatus();
 
   if (serviceStatus.isClosed) {
@@ -434,7 +514,7 @@ app.get('/api/tempo-espera/:id', async (req, res) => {
   // Fallback if specific station wasn't returned in global batch
   if (stationTrains.length === 0) {
     try {
-      const apiRes = await fetchMetroApiDeduped(`/tempoEspera/Estacao/${stationId}`);
+      const apiRes = await fetchMetroApiDeduped(`/tempoEspera/Estacao/${encodeURIComponent(stationId)}`);
       const rawList = (apiRes && Array.isArray(apiRes.resposta)) ? apiRes.resposta : [];
       if (rawList.length > 0) {
         stationTrains = enrichTrainData(rawList);
@@ -456,5 +536,4 @@ app.get('/api/tempo-espera/:id', async (req, res) => {
 // Start server on all network interfaces
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚇 Servidor NoMetro rodando em http://localhost:${PORT}`);
-  console.log(`📱 Acesso no telemóvel: http://192.168.1.232:${PORT}`);
 });

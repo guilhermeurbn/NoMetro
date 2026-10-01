@@ -33,6 +33,17 @@ function triggerHaptic(style = 'light') {
   } catch (e) {}
 }
 
+// Utility para sanitização e escape de strings em HTML (prevenção de XSS)
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 const I18N = {
   pt: {
     searchPlaceholder: 'Pesquisar estação...',
@@ -1387,12 +1398,12 @@ function showRecentStationsDropdown() {
   `;
 
   if (validStations.length > 0) {
-    html += `<div class="dropdown-header"><span>🕒</span> ${t('recentStations')}</div>`;
+    html += `<div class="dropdown-header"><span>🕒</span> ${escapeHtml(t('recentStations'))}</div>`;
     html += validStations.map(s => {
-      const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line]};"></span>`).join('');
+      const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line] || '#888'};"></span>`).join('');
       return `
-        <div class="dropdown-item" data-id="${s.id}">
-          <span class="dropdown-station-name">${s.name}</span>
+        <div class="dropdown-item" data-id="${escapeHtml(s.id)}">
+          <span class="dropdown-station-name">${escapeHtml(s.name)}</span>
           <div class="dropdown-line-dots">${dots}</div>
         </div>
       `;
@@ -1432,16 +1443,16 @@ function handleSearch(e) {
   ).slice(0, 6);
 
   if (matches.length === 0) {
-    dom.stationDropdown.innerHTML = `<div class="dropdown-item" style="color: var(--text-muted); font-size: 0.85rem;">${t('noStationFound')}</div>`;
+    dom.stationDropdown.innerHTML = `<div class="dropdown-item" style="color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(t('noStationFound'))}</div>`;
     dom.stationDropdown.style.display = 'block';
     return;
   }
 
   dom.stationDropdown.innerHTML = matches.map(s => {
-    const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line]};"></span>`).join('');
+    const dots = s.lines.map(line => `<span class="line-dot" style="background: ${STATE.colors[line] || '#888'};"></span>`).join('');
     return `
-      <div class="dropdown-item" data-id="${s.id}">
-        <span class="dropdown-station-name">${s.name}</span>
+      <div class="dropdown-item" data-id="${escapeHtml(s.id)}">
+        <span class="dropdown-station-name">${escapeHtml(s.name)}</span>
         <div class="dropdown-line-dots">${dots}</div>
       </div>
     `;
