@@ -160,16 +160,22 @@ const TRANSIT_HUBS = {
   AP: { hubLabel: 'Aeroporto' }
 };
 
+const staticMetroData = (typeof window !== 'undefined' && window.STATIC_METRO_DATA) || {};
+const initialStationsMap = {};
+if (Array.isArray(staticMetroData.stations)) {
+  staticMetroData.stations.forEach(s => { initialStationsMap[s.id] = s; });
+}
+
 const STATE = {
-  stations: [],
-  stationsMap: {},
-  lineOrders: {},
-  lineTerminals: {},
-  colors: {
+  stations: staticMetroData.stations || [],
+  stationsMap: initialStationsMap,
+  lineOrders: staticMetroData.lineOrders || {},
+  lineTerminals: staticMetroData.lineTerminals || {},
+  colors: staticMetroData.colors || {
     Azul: '#0084c9',
-    Amarela: '#ffbe00',
-    Verde: '#00a650',
-    Vermelha: '#e52329'
+    Amarela: '#f6b21b',
+    Verde: '#009e54',
+    Vermelha: '#e30613'
   },
   selectedStationId: (typeof localStorage !== 'undefined' && localStorage.getItem('nometro_last_station')) || 'MP',
   selectedTimelineLine: 'Azul',
@@ -446,40 +452,20 @@ async function init() {
   switchView(STATE.currentView || 'next-train');
   updateModeButtonUI();
 
-  // Instant local cache hydration for zero-delay startup (0ms)
-  try {
-    const cachedMeta = localStorage.getItem('nometro_cached_stations_v2');
-    if (cachedMeta) {
-      const data = JSON.parse(cachedMeta);
-      if (data && Array.isArray(data.stations)) {
-        STATE.stations = data.stations;
-        STATE.lineOrders = data.lineOrders;
-        STATE.lineTerminals = data.lineTerminals;
-        if (data.colors) STATE.colors = data.colors;
-        data.stations.forEach(s => { STATE.stationsMap[s.id] = s; });
+  // Draw UI immediately on frame 0 (Zero blank screen delay)
+  updateActiveStationUI();
+  renderSchematicTrack();
 
-        const lastStation = localStorage.getItem('nometro_last_station');
-        if (lastStation && STATE.stationsMap[lastStation]) {
-          STATE.selectedStationId = lastStation;
-        }
-
-        // Draw immediately without waiting for network!
-        updateActiveStationUI();
-        renderSchematicTrack();
-      }
-    }
-  } catch (e) {}
-
-  // Safety fallback in case network hangs
-  const safetyTimeout = setTimeout(hideSplashScreen, 2500);
+  // Fast splash screen reveal
+  const safetyTimeout = setTimeout(hideSplashScreen, 1200);
   const startTime = Date.now();
 
   try {
     const stationsRes = await fetch(`${API_BASE}/api/estacoes`).then(r => r.json());
-    if (stationsRes.success) {
+    if (stationsRes && stationsRes.success && Array.isArray(stationsRes.stations)) {
       STATE.stations = stationsRes.stations;
-      STATE.lineOrders = stationsRes.lineOrders;
-      STATE.lineTerminals = stationsRes.lineTerminals;
+      if (stationsRes.lineOrders) STATE.lineOrders = stationsRes.lineOrders;
+      if (stationsRes.lineTerminals) STATE.lineTerminals = stationsRes.lineTerminals;
       if (stationsRes.colors) STATE.colors = stationsRes.colors;
 
       stationsRes.stations.forEach(s => {
@@ -906,9 +892,9 @@ function renderTrainCards() {
       return;
     }
 
-    const lineColor = STATE.colors[lineName] || '#0084c9';
-    const terminals = STATE.lineTerminals[lineName] || { dir1: 'Terminal 1', dir2: 'Terminal 2' };
-    const stationsOnLine = STATE.lineOrders[lineName] || [];
+    const lineColor = (STATE.colors && STATE.colors[lineName]) || '#0084c9';
+    const terminals = (STATE.lineTerminals && STATE.lineTerminals[lineName]) || { dir1: 'Terminal 1', dir2: 'Terminal 2' };
+    const stationsOnLine = (STATE.lineOrders && STATE.lineOrders[lineName]) || [];
     const currentIndex = stationsOnLine.indexOf(STATE.selectedStationId);
 
     // Direction 1 (only if current station is not the destination terminal itself)
